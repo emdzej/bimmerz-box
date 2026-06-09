@@ -34,7 +34,7 @@
   .stripe i:nth-child(3) { background: #c41e3a; }
 
   h1 {
-    margin: 0 0 12px;
+    margin: 0 0 8px;
     font-size: 36px;
     font-weight: 800;
     letter-spacing: -0.5px;
@@ -53,34 +53,96 @@
     font-weight: 600;
     color: #94a3b8;
   }
-  p {
-    margin: 0 0 32px;
-    max-width: 360px;
-    line-height: 1.5;
+  .tagline {
+    margin: 0 0 28px;
     color: #94a3b8;
-    font-size: 16px;
+    font-size: 14px;
+    letter-spacing: 0.2px;
   }
-  .continue {
-    display: inline-block;
-    padding: 16px 40px;
+
+  .url-card {
+    display: block;
+    background: #131a2e;
+    border: 1px solid #1f2a44;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 32px;
+    max-width: 340px;
+  }
+  .url-card__label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #64748b;
+    margin-bottom: 8px;
+  }
+  .url-card__value {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo,
+                 Consolas, monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: #e2e8f0;
+    user-select: all;
+    -webkit-user-select: all;
+    word-break: break-all;
+  }
+
+  .ok-btn {
+    padding: 14px 44px;
     background: #c41e3a;
     color: #fff;
     border: none;
     border-radius: 999px;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
-    text-decoration: none;
     cursor: pointer;
     transition: transform .1s ease, box-shadow .15s ease;
   }
-  .continue:hover { box-shadow: 0 8px 24px -8px rgba(196,30,58,.6); }
-  .continue:active { transform: scale(0.97); }
-  small {
-    display: block;
-    margin-top: 28px;
+  .ok-btn:hover { box-shadow: 0 8px 24px -8px rgba(196,30,58,.6); }
+  .ok-btn:active { transform: scale(0.97); }
+  .ok-btn:disabled {
+    background: #1f2a44;
     color: #64748b;
-    font-size: 12px;
+    cursor: default;
+    box-shadow: none;
+  }
+
+  .done-msg {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .done-msg.is-visible { display: flex; }
+  .check {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: #1c69d4;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .done-msg__title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+  .done-msg__hint {
+    color: #94a3b8;
+    font-size: 14px;
+    max-width: 320px;
+    line-height: 1.5;
+  }
+  .done-msg__hint strong { color: #e2e8f0; }
+  .done-msg__hint code {
     font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+    color: #e2e8f0;
   }
 </style>
 </head>
@@ -88,23 +150,53 @@
 <div class="stripe" aria-hidden="true"><i></i><i></i><i></i></div>
 
 <h1><span class="brand-grad">bimmerz</span><span class="brand-box">box</span></h1>
-<p>You're connected to the dongle. Tap Continue to open the dashboard in your browser.</p>
+<p class="tagline">You're connected. Open your browser and go to:</p>
 
-<a id="go" class="continue" href="http://172.16.7.1/" target="_blank" rel="noopener noreferrer">Continue</a>
+<div class="url-card">
+  <span class="url-card__label">Address</span>
+  <span class="url-card__value">http://172.16.7.1</span>
+</div>
 
-<small>You can close this window once the browser opens.</small>
+<button id="ok" class="ok-btn" type="button">OK, got it</button>
+
+<div id="done" class="done-msg" role="status" aria-live="polite">
+  <div class="check" aria-hidden="true">✓</div>
+  <div class="done-msg__title">All set</div>
+  <div class="done-msg__hint">
+    Tap <strong>Cancel</strong> above — on modern iOS this just
+    dismisses the sheet, you stay connected. Then open your browser
+    and visit <code>http://172.16.7.1</code>.
+  </div>
+</div>
 
 <script>
 (function () {
-  var btn = document.getElementById('go');
+  var btn = document.getElementById('ok');
+  var done = document.getElementById('done');
   btn.addEventListener('click', function () {
-    // Tell the dongle the user accepted — subsequent captive-portal
-    // probes will return "online" so the OS dismisses this sheet.
-    // `keepalive` lets the request survive the navigation that opens
-    // the dashboard in the system browser.
-    try {
-      fetch('/captive/accept', { method: 'POST', keepalive: true });
-    } catch (e) { /* ignore — link still opens */ }
+    // Step 1 — mark this client as accepted so future captive probes
+    // get the platform "online" response.
+    fetch('/captive/accept', { method: 'POST', keepalive: true })
+      .catch(function () { /* swallow — UI still updates */ });
+
+    btn.disabled = true;
+    btn.textContent = 'Done';
+    done.classList.add('is-visible');
+
+    // Step 2 — try to nudge iOS into reclassifying the network as
+    // online by navigating the WebView itself to Apple's probe URL.
+    // Our DNS hijack catches captive.apple.com and serves the literal
+    // "Success" body; iOS occasionally flips Cancel → Done when it
+    // sees its own probe page load successfully. Best-effort —
+    // platforms that don't notice this still get the on-screen
+    // instructions above.
+    setTimeout(function () {
+      try {
+        window.location.replace(
+          'http://captive.apple.com/hotspot-detect.html'
+        );
+      } catch (e) { /* WebView blocked it — fine, instructions remain */ }
+    }, 400);
   });
 })();
 </script>
