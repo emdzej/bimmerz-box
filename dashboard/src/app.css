@@ -1,0 +1,78 @@
+/*
+ * BMW M-division palette — same three colours bimmerz.app / bimmerz-hub
+ * use. Light/dark themes swap the neutrals around the brand colours;
+ * the M stripe is identity and stays the same in both modes.
+ */
+:root {
+  --m-light: #1c69d4;
+  --m-dark: #002664;
+  --m-red: #c41e3a;
+
+  /* Light theme (default) */
+  --bg: #f7f8fb;
+  --bg-elev: #ffffff;
+  --fg: #0f172a;
+  --fg-muted: #475569;
+  --fg-faint: #94a3b8;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --tile-bg: #ffffff;
+  --tile-bg-hover: #eef1f6;
+  --tile-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --tile-shadow-hover: 0 8px 24px rgba(28, 105, 212, 0.18);
+}
+
+[data-theme='dark'] {
+  --bg: #0b1020;
+  --bg-elev: #131a2e;
+  --fg: #e2e8f0;
+  --fg-muted: #94a3b8;
+  --fg-faint: #64748b;
+  --border: #1f2a44;
+  --border-strong: #2e3a57;
+  --tile-bg: #131a2e;
+  --tile-bg-hover: #1a2342;
+  --tile-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.25);
+  --tile-shadow-hover: 0 8px 24px rgba(28, 105, 212, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+/* The M stripe sits flush against the top of the viewport. */
+.m-stripe {
+  display: flex;
+  height: 4px;
+  width: 100%;
+}
+.m-stripe__band {
+  flex: 1;
+}
+.m-stripe__band--light {
+  background: var(--m-light);
+}
+.m-stripe__band--dark {
+  background: var(--m-dark);
+}
+.m-stripe__band--red {
+  background: var(--m-red);
+}

@@ -1,0 +1,13 @@
+## Path dependency on ediabasx-embedded during development.
+##
+## When ediabasx-embedded is published to the ESP component registry
+## (or pinned to a git tag), switch to:
+##
+##   dependencies:
+##     ediabasx-embedded:
+##       git: https://github.com/<org>/ediabasx-embedded
+##       version: ">=0.1.0"
+
+dependencies:
+  ediabasx-embedded:
+    path: ../../../../ediabasx-embedded

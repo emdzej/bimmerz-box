@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bimmerz Box — Admin</title>
+  <style>
+    /*
+     * Palette mirrors ../bimmerz.app's BMW-M dark theme:
+     *   M Light  #1c69d4   M Dark   #002664   M Red    #c41e3a
+     *   bg       #06122c   bg-alt   #091735   elv      #0c1e44
+     *   text     #eef3fb / #c4cde0 / #8993a8 (1/2/3)
+     */
+    :root {
+      --m-light: #4f93ee;     /* brand-1 in dark mode for readability */
+      --m-light-strong: #1c69d4;
+      --m-dark: #002664;
+      --m-red: #c41e3a;
+
+      --bg:       #06122c;
+      --bg-alt:   #091735;
+      --bg-elv:   #0c1e44;
+      --divider:  #142855;
+
+      --text-1: #eef3fb;
+      --text-2: #c4cde0;
+      --text-3: #8993a8;
+
+      --brand-soft: rgba(79, 147, 238, 0.16);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text-1);
+      font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* 3-band M stripe — same visual signature as bimmerz.app */
+    .m-stripe { display: flex; height: 3px; width: 100%; }
+    .m-stripe > div { flex: 1; }
+    .m-stripe > div:nth-child(1) { background: var(--m-light-strong); }
+    .m-stripe > div:nth-child(2) { background: var(--m-dark); }
+    .m-stripe > div:nth-child(3) { background: var(--m-red); }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 24px 96px;
+    }
+    header { margin-bottom: 28px; }
+    .brand {
+      display: inline-block;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--m-light);
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 26px; margin: 0 0 4px; font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    h2 {
+      font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--text-3); margin: 32px 0 12px; font-weight: 600;
+    }
+    p.subtitle { color: var(--text-2); margin: 0; }
+
+    section {
+      background: var(--bg-elv);
+      border: 1px solid var(--divider);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .row {
+      display: grid; grid-template-columns: 160px 1fr; gap: 12px;
+      align-items: center; margin-bottom: 12px;
+    }
+    .row:last-child { margin-bottom: 0; }
+    label { color: var(--text-2); font-size: 13px; }
+    input, select {
+      width: 100%;
+      background: var(--bg-alt);
+      border: 1px solid var(--divider);
+      border-radius: 4px;
+      padding: 8px 10px;
+      color: var(--text-1);
+      font: inherit;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--m-light);
+      box-shadow: 0 0 0 3px var(--brand-soft);
+    }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      background: var(--m-light-strong); color: #fff; border: 0;
+      border-radius: 4px; padding: 10px 16px; font: inherit;
+      cursor: pointer; font-weight: 500;
+      transition: filter .15s;
+    }
+    button:hover { filter: brightness(1.12); }
+    button.secondary {
+      background: transparent; border: 1px solid var(--divider);
+      color: var(--text-1);
+    }
+    button.secondary:hover {
+      border-color: var(--m-light); color: var(--m-light);
+      filter: none;
+    }
+    button.danger { background: var(--m-red); }
+
+    .info-grid {
+      display: grid; grid-template-columns: 160px 1fr;
+      gap: 6px 12px;
+      font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+      font-size: 13px;
+    }
+    .info-grid > span:nth-child(odd) { color: var(--text-3); }
+    .info-grid > span:nth-child(even) { color: var(--text-1); }
+
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--bg-elv); border: 1px solid var(--divider);
+      padding: 10px 16px; border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+      opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+    #toast.ok  { border-color: var(--m-light); }
+    #toast.err { border-color: var(--m-red); }
+
+    /* ---- file browser ---- */
+    .files-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .breadcrumb {
+      font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+      font-size: 13px; color: var(--text-2);
+      overflow-wrap: anywhere;
+    }
+    .breadcrumb a {
+      color: var(--m-light); text-decoration: none; cursor: pointer;
+    }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb .sep { color: var(--text-3); margin: 0 4px; }
+    .files-actions { display: flex; gap: 8px; }
+    .files-actions .upload-btn,
+    .files-actions button {
+      background: var(--m-light-strong); color: #fff; border: 0;
+      border-radius: 4px; padding: 8px 14px; font: inherit;
+      font-size: 13px; cursor: pointer; font-weight: 500;
+      transition: filter .15s;
+    }
+    .files-actions .upload-btn { display: inline-block; }
+    .files-actions .upload-btn:hover,
+    .files-actions button:hover { filter: brightness(1.12); }
+    .files-actions button.secondary {
+      background: transparent; border: 1px solid var(--divider);
+      color: var(--text-1);
+    }
+    .files-actions button.secondary:hover {
+      border-color: var(--m-light); color: var(--m-light); filter: none;
+    }
+
+    table.files {
+      width: 100%; border-collapse: collapse;
+      font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+      font-size: 13px;
+    }
+    table.files th, table.files td {
+      text-align: left; padding: 6px 10px;
+      border-bottom: 1px solid var(--divider);
+    }
+    table.files th {
+      color: var(--text-3); font-weight: 500; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    table.files td.size, table.files th.size,
+    table.files td.mtime, table.files th.mtime { color: var(--text-3); }
+    table.files td.size, table.files th.size { width: 100px; text-align: right; }
+    table.files td.mtime, table.files th.mtime { width: 170px; }
+    table.files td.act, table.files th.act { width: 110px; text-align: right; }
+    table.files tr:last-child td { border-bottom: 0; }
+    table.files tbody tr:hover { background: rgba(79, 147, 238, 0.06); }
+
+    .name-link {
+      color: var(--text-1); text-decoration: none; cursor: pointer;
+    }
+    .name-link:hover { color: var(--m-light); }
+    .name-link .icon { color: var(--text-3); margin-right: 6px; }
+    .name-link.dir { font-weight: 500; }
+    .name-link.dir .icon { color: var(--m-light); }
+
+    .row-action {
+      background: transparent; border: 0; color: var(--text-3);
+      font: inherit; font-size: 12px; cursor: pointer; padding: 2px 4px;
+    }
+    .row-action:hover { color: var(--m-light); }
+    .row-action.danger:hover { color: var(--m-red); }
+    .files-empty { color: var(--text-3); font-style: italic; padding: 12px 0; }
+    .files-busy { color: var(--text-3); padding: 12px 0; }
+  </style>
+</head>
+<body>
+<div class="m-stripe" aria-hidden="true"><div></div><div></div><div></div></div>
+
+<main>
+  <header>
+    <div class="brand">Bimmerz</div>
+    <h1>Box — Admin</h1>
+    <p class="subtitle">Configure the dongle. Changes save to NVS and apply on next restart.</p>
+  </header>
+
+  <h2>System</h2>
+  <section>
+    <div class="info-grid" id="info">
+      <span>Loading…</span><span></span>
+    </div>
+  </section>
+
+  <h2>Wi-Fi Access Point</h2>
+  <section>
+    <div class="row"><label for="ssid">SSID</label><input id="ssid" maxlength="31"></div>
+    <div class="row"><label for="password">Password</label><input id="password" type="text" maxlength="63"></div>
+    <div class="row"><label for="channel">Channel</label>
+      <select id="channel">
+        <option>1</option><option>2</option><option>3</option><option>4</option>
+        <option>5</option><option selected>6</option><option>7</option><option>8</option>
+        <option>9</option><option>10</option><option>11</option><option>12</option><option>13</option>
+      </select></div>
+    <div class="row"><label for="ap_ip">AP IP / mask</label><input id="ap_ip" placeholder="172.16.7.1/24"></div>
+  </section>
+
+  <h2>Ethernet</h2>
+  <section>
+    <div class="row"><label for="eth_mode">Mode</label>
+      <select id="eth_mode">
+        <option value="off">Off</option>
+        <option value="dhcp">DHCP client</option>
+        <option value="static">Static IP</option>
+      </select></div>
+    <div class="row"><label for="eth_ip">Static IP / mask</label><input id="eth_ip" placeholder="192.168.1.50/24"></div>
+    <div class="row"><label for="eth_gw">Gateway</label><input id="eth_gw" placeholder="192.168.1.1"></div>
+  </section>
+
+  <h2>Files <span style="color:var(--text-3);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;">— SD card</span></h2>
+  <section id="files-panel">
+    <div class="files-toolbar">
+      <div class="breadcrumb" id="breadcrumb">/sdcard/</div>
+      <div class="files-actions">
+        <label class="upload-btn" title="Upload files into the current folder">
+          Upload
+          <input id="files-upload" type="file" multiple hidden>
+        </label>
+        <button class="secondary" id="files-mkdir">New folder</button>
+      </div>
+    </div>
+    <table class="files">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th class="size">Size</th>
+          <th class="mtime">Modified</th>
+          <th class="act"></th>
+        </tr>
+      </thead>
+      <tbody id="files-tbody">
+        <tr><td colspan="4" class="files-busy">Loading…</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="actions">
+    <button id="save">Save</button>
+    <button class="secondary" id="restart">Restart</button>
+    <button class="danger" id="factory">Factory reset</button>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const toast = (msg, kind = "ok") => {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "show " + kind;
+  setTimeout(() => t.className = "", 2400);
+};
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error(r.status + " " + r.statusText);
+  const ct = r.headers.get("content-type") || "";
+  return ct.includes("json") ? r.json() : r.text();
+}
+
+function renderInfo(info) {
+  const rows = [
+    ["Firmware",      info.firmware],
+    ["Chip ID",       info.chip_id],
+    ["IDF version",   info.idf_version],
+    ["Uptime",        info.uptime_s + " s"],
+    ["Free heap",     (info.free_heap_kb || 0) + " KB"],
+    ["Largest block", (info.largest_block_kb || 0) + " KB"],
+  ];
+  $("info").innerHTML = rows
+    .map(([k, v]) => `<span>${k}</span><span>${v || "-"}</span>`).join("");
+}
+
+function loadConfigInto(cfg) {
+  $("ssid").value        = cfg.ap_ssid || "";
+  $("password").value    = cfg.ap_password || "";
+  $("channel").value     = cfg.ap_channel || 6;
+  $("ap_ip").value       = cfg.ap_ip || "172.16.7.1/24";
+  $("eth_mode").value    = cfg.eth_mode || "off";
+  $("eth_ip").value      = cfg.eth_ip || "";
+  $("eth_gw").value      = cfg.eth_gw || "";
+  $("default_app").value = cfg.default_app || "inpax";
+}
+
+function collectConfig() {
+  return {
+    ap_ssid:     $("ssid").value,
+    ap_password: $("password").value,
+    ap_channel:  parseInt($("channel").value, 10),
+    ap_ip:       $("ap_ip").value,
+    eth_mode:    $("eth_mode").value,
+    eth_ip:      $("eth_ip").value,
+    eth_gw:      $("eth_gw").value,
+    default_app: $("default_app").value,
+  };
+}
+
+async function refresh() {
+  try {
+    const [info, cfg] = await Promise.all([
+      api("/api/info"), api("/api/config"),
+    ]);
+    renderInfo(info);
+    loadConfigInto(cfg);
+  } catch (e) {
+    toast("Load failed: " + e.message, "err");
+  }
+}
+
+$("save").onclick = async () => {
+  try {
+    await api("/api/config", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(collectConfig()),
+    });
+    toast("Saved");
+  } catch (e) {
+    toast("Save failed: " + e.message, "err");
+  }
+};
+
+$("restart").onclick = async () => {
+  if (!confirm("Restart the dongle now?")) return;
+  try {
+    await api("/api/restart", { method: "POST" });
+    toast("Restarting…");
+  } catch (e) { toast("Restart failed: " + e.message, "err"); }
+};
+
+$("factory").onclick = async () => {
+  if (!confirm("Wipe all NVS settings and restart? Wi-Fi will revert to defaults.")) return;
+  try {
+    await api("/api/factory-reset", { method: "POST" });
+    toast("Reset, restarting…");
+  } catch (e) { toast("Reset failed: " + e.message, "err"); }
+};
+
+/* ---------- file browser ---------- */
+
+const FS_ROOT = "/sdcard";
+let cwd = FS_ROOT;
+
+function formatSize(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+  if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + " MB";
+  return (n / 1024 / 1024 / 1024).toFixed(2) + " GB";
+}
+
+function formatMtime(epoch) {
+  if (!epoch) return "—";
+  const d = new Date(epoch * 1000);
+  if (isNaN(d.getTime())) return "—";
+  // Compact local timestamp.
+  return d.toISOString().replace("T", " ").replace(/:\d\d\..+/, "");
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
+
+function renderBreadcrumb(path) {
+  // path is /sdcard or /sdcard/foo/bar — produce clickable segments
+  const parts = path.split("/").filter(Boolean);  // ["sdcard", "foo", "bar"]
+  let acc = "";
+  const links = parts.map((p, i) => {
+    acc += "/" + p;
+    const isLast = i === parts.length - 1;
+    return isLast
+      ? `<span>${escapeHtml(p)}</span>`
+      : `<a data-go="${escapeHtml(acc)}">${escapeHtml(p)}</a>`;
+  });
+  $("breadcrumb").innerHTML =
+    `<a data-go="${FS_ROOT}">/</a>` +
+    links.map((l) => `<span class="sep">/</span>${l}`).join("");
+
+  $("breadcrumb").querySelectorAll("[data-go]").forEach((el) => {
+    el.onclick = () => loadFiles(el.dataset.go);
+  });
+}
+
+function renderEntries(entries) {
+  const tbody = $("files-tbody");
+  if (!entries.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="files-empty">empty</td></tr>`;
+    return;
+  }
+  // dirs first, then files; both alphabetical
+  entries.sort((a, b) =>
+    a.type !== b.type
+      ? (a.type === "dir" ? -1 : 1)
+      : a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+  );
+
+  const rows = entries.map((e) => {
+    const child = cwd + "/" + e.name;
+    if (e.type === "dir") {
+      return `<tr>
+        <td><a class="name-link dir" data-cd="${escapeHtml(child)}">
+          <span class="icon">▸</span>${escapeHtml(e.name)}</a></td>
+        <td class="size">—</td>
+        <td class="mtime">${formatMtime(e.mtime)}</td>
+        <td class="act">
+          <button class="row-action danger" data-rm="${escapeHtml(child)}" data-kind="dir">Delete</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
+      <td><a class="name-link" href="/api/files/raw?path=${encodeURIComponent(child)}">
+        <span class="icon">⌖</span>${escapeHtml(e.name)}</a></td>
+      <td class="size">${formatSize(e.size)}</td>
+      <td class="mtime">${formatMtime(e.mtime)}</td>
+      <td class="act">
+        <button class="row-action danger" data-rm="${escapeHtml(child)}" data-kind="file">Delete</button>
+      </td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows.join("");
+
+  tbody.querySelectorAll("[data-cd]").forEach((el) => {
+    el.onclick = (ev) => { ev.preventDefault(); loadFiles(el.dataset.cd); };
+  });
+  tbody.querySelectorAll("[data-rm]").forEach((el) => {
+    el.onclick = async () => {
+      const p = el.dataset.rm;
+      const kind = el.dataset.kind;
+      if (!confirm(`Delete ${kind} "${p}"?` +
+                   (kind === "dir" ? "\n(directory must be empty)" : ""))) return;
+      try {
+        await api("/api/files?path=" + encodeURIComponent(p),
+                  { method: "DELETE" });
+        toast("Deleted");
+        loadFiles(cwd);
+      } catch (e) { toast("Delete failed: " + e.message, "err"); }
+    };
+  });
+}
+
+async function loadFiles(path) {
+  cwd = path || FS_ROOT;
+  $("files-tbody").innerHTML =
+    `<tr><td colspan="4" class="files-busy">Loading…</td></tr>`;
+  renderBreadcrumb(cwd);
+  try {
+    const data = await api("/api/files?path=" + encodeURIComponent(cwd));
+    renderEntries(data.entries || []);
+  } catch (e) {
+    $("files-tbody").innerHTML =
+      `<tr><td colspan="4" class="files-empty">Error: ${escapeHtml(e.message)}</td></tr>`;
+  }
+}
+
+$("files-upload").onchange = async (ev) => {
+  const files = Array.from(ev.target.files || []);
+  ev.target.value = "";  // allow re-uploading the same file
+  if (!files.length) return;
+  for (const f of files) {
+    const target = cwd + "/" + f.name;
+    try {
+      await api("/api/files/upload?path=" + encodeURIComponent(target), {
+        method: "POST", body: f,
+      });
+      toast(`Uploaded ${f.name}`);
+    } catch (e) {
+      toast(`Upload ${f.name} failed: ${e.message}`, "err");
+    }
+  }
+  loadFiles(cwd);
+};
+
+$("files-mkdir").onclick = async () => {
+  const name = prompt("New folder name:");
+  if (!name) return;
+  if (name.includes("/")) { toast("No slashes in name", "err"); return; }
+  try {
+    await api("/api/files/mkdir?path=" + encodeURIComponent(cwd + "/" + name),
+              { method: "POST" });
+    toast("Created");
+    loadFiles(cwd);
+  } catch (e) { toast("Mkdir failed: " + e.message, "err"); }
+};
+
+loadFiles(FS_ROOT);
+
+refresh();
+</script>
+</body>
+</html>

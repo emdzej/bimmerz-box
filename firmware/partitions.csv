@@ -1,0 +1,12 @@
+# Bimmerz Box partition table — 16 MB internal flash, dual-app OTA.
+# See docs/firmware.md §5.3 for rationale.
+#
+# Name,        Type, SubType,  Offset,    Size,     Flags
+nvs,           data, nvs,      0x9000,    0x6000,
+phy_init,      data, phy,      0xf000,    0x1000,
+otadata,       data, ota,      0x10000,   0x2000,
+ota_0,         app,  ota_0,    0x20000,   0x700000,
+ota_1,         app,  ota_1,    0x720000,  0x700000,
+c6_fw,         data, 0x40,     0xe20000,  0x100000,
+nvs_keys,      data, nvs_keys, 0xf20000,  0x1000,   encrypted
+spare,         data, 0x41,     0xf30000,  0xd0000,

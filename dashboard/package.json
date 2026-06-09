@@ -1,0 +1,21 @@
+{
+  "name": "bimmerz-box-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Root-namespace launcher for the bimmerz-box dongle — tiles for ediabasx / inpax / ncsx / nfsx / tunex on the same device, plus a gear shortcut to /admin/.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "svelte": "^5.55.7",
+    "svelte-check": "^4.4.8",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.13"
+  }
+}

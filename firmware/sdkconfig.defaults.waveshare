@@ -1,0 +1,13 @@
+# Bimmerz Box — Waveshare ESP32-P4 Module DEV-KIT overrides (phase 1).
+#
+# Diagnostic transceivers don't exist on this board. The OBD HAL treats
+# undefined pins as no-ops so the firmware boots far enough to serve
+# /admin/ + the SD-backed apps over Wi-Fi.
+
+CONFIG_BIMMERZ_BOARD_WAVESHARE=y
+
+# ---- ESP-Hosted: C6 as Wi-Fi+BLE co-processor over SDIO --------------------
+# 1.4.x defaults for IDF_TARGET_ESP32P4 already match the Waveshare board's
+# C6 wiring (CLK=18, CMD=19, D0=14, D1=15, D2=16, D3=17, RST=54), so we
+# only need to point esp_wifi_remote at the C6 as the slave target.
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y

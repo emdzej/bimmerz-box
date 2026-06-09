@@ -1,0 +1,12 @@
+## Component dependencies pulled by the ESP-IDF component manager.
+##
+## ediabasx-embedded is fetched from its own repo at a pinned tag once
+## that repo exposes itself as an ESP-IDF component. Until then, the
+## ediabasx_platform component is a stub.
+
+dependencies:
+  idf:
+    version: ">=5.3"
+  # ediabasx-embedded:
+  #   git: https://github.com/<org>/ediabasx-embedded
+  #   version: "v0.1.0"

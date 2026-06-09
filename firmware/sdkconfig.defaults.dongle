@@ -1,0 +1,6 @@
+# Bimmerz Box — custom dongle PCB overrides (phase 3).
+#
+# Used once the custom hardware exists. Wires the OBD HAL to real GPIOs
+# and enables the K-line / CAN / IBUS / DoIP transport stacks.
+
+CONFIG_BIMMERZ_BOARD_DONGLE=y

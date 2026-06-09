@@ -1,0 +1,10 @@
+## FTDI host driver. We use the C API from usb_host_ftdi_vcp (which
+## wraps cdc_acm_host with FTDI-specific control transfers). The C++
+## polymorphic wrapper at espressif/usb_host_vcp wants -fexceptions
+## (off by default in ESP-IDF) so we skip it.
+
+dependencies:
+  espressif/usb_host_ftdi_vcp:
+    version: "^2.0"
+  espressif/usb_host_cdc_acm:
+    version: "^2.0"

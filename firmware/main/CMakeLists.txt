@@ -1,0 +1,21 @@
+idf_component_register(
+    SRCS
+        "app_main.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        nvs_flash
+        board
+        log_bus
+        storage
+        obd_hal
+        c6_host
+        wifi_ap
+        ediabasx_platform
+        http_static
+        jsonrpc
+        admin_ui
+        ota_manager
+        usb_msc
+        usb_host
+)

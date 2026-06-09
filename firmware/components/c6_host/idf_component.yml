@@ -1,0 +1,19 @@
+## Espressif's ESP-Hosted: host-side driver that gives the P4 access to
+## the C6's Wi-Fi + BLE peripherals over SDIO. After initialization,
+## the standard esp_wifi / esp_netif APIs Just Work.
+##
+## The matching slave firmware must be flashed on the C6. The Waveshare
+## ESP32-P4-NANO ships with esp_hosted_ng slave firmware preflashed;
+## newer revisions may use esp_hosted (the unified 2.x line).
+
+dependencies:
+  # Pinned to 1.4.x to match the Waveshare ESP32-P4-Platform examples
+  # (10_wifistation, 15_eth2ap) — the Waveshare board ships with a C6
+  # slave firmware that speaks the 1.4 host protocol. ESP-Hosted 2.x
+  # asserts NULL-queue after SDIO bring-up against that slave.
+  espressif/esp_hosted:
+    version: "~1.4.0"
+  # esp_wifi_remote provides the SLAVE_IDF_TARGET_* Kconfig symbols and
+  # the weak esp_wifi_* shims that route calls through ESP-Hosted.
+  espressif/esp_wifi_remote:
+    version: "0.14.*"

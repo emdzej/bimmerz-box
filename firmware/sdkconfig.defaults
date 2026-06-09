@@ -1,0 +1,59 @@
+# Bimmerz Box — base sdkconfig defaults.
+#
+# Board-specific overrides live in sdkconfig.defaults.waveshare and
+# sdkconfig.defaults.dongle and are layered on top of this file at
+# configure time.
+
+CONFIG_IDF_TARGET="esp32p4"
+
+# ---- PSRAM (32 MB octal, soldered) ----------------------------------------
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_HEX=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=1024
+
+# ---- Flash + partition table ----------------------------------------------
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+
+# ---- ESP32-P4 cache + XIP (matches Waveshare example baseline) -------------
+# ESP-Hosted's SDIO timing on this board appears sensitive to these.
+CONFIG_CACHE_L2_CACHE_256KB=y
+CONFIG_CACHE_L2_CACHE_LINE_128B=y
+CONFIG_SPIRAM_XIP_FROM_PSRAM=y
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=10240
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# ---- Bootloader / OTA -----------------------------------------------------
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+CONFIG_BOOTLOADER_WDT_ENABLE=y
+CONFIG_ESP_TASK_WDT_INIT=y
+
+# ---- Logging --------------------------------------------------------------
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y
+CONFIG_LOG_COLORS=y
+
+# ---- FreeRTOS -------------------------------------------------------------
+CONFIG_FREERTOS_HZ=1000
+CONFIG_FREERTOS_UNICORE=n
+
+# ---- Networking placeholders (filled in by wifi_ap component later) -------
+CONFIG_LWIP_LOCAL_HOSTNAME="bimmerz-box"
+
+# ---- Filesystem -----------------------------------------------------------
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_MAX_LFN=255
+
+# ---- HTTP server ----------------------------------------------------------
+CONFIG_HTTPD_WS_SUPPORT=y
+CONFIG_HTTPD_MAX_URI_LEN=512
+CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+
+# ---- Compiler -------------------------------------------------------------
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+CONFIG_COMPILER_WARN_WRITE_STRINGS=y
