@@ -1,0 +1,21 @@
+# KiCad auto-saves / backups / lock files
+*-backups/
+_autosave-*
+*-cache.lib
+*.bak
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*.kicad_prl-bak
+~*.kicad_*
+*.lck
+
+# Per-user IDE state — keep .kicad_pro (project) but drop the local state,
+# which is just open-tabs / cursor positions and noisy across machines.
+# Remove this line if you'd rather check it in.
+*.kicad_prl
+
+# Fab output
+gerbers/
+*.gbr
+*.drl
+*.zip
