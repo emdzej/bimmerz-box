@@ -59,8 +59,13 @@
 #define BOARD_LLINE_DRV_GPIO          (-1)
 #define BOARD_DOIP_ACT_GPIO           (-1)
 
-#define BOARD_CAN_TX_GPIO             (-1)
-#define BOARD_CAN_RX_GPIO             (-1)
+// CAN (no transceivers on the dev board — rpc_can returns can_not_present)
+#define BOARD_CAN0_TX_GPIO            (-1)
+#define BOARD_CAN0_RX_GPIO            (-1)
+#define BOARD_CAN0_STBY_GPIO          (-1)
+#define BOARD_CAN1_TX_GPIO            (-1)
+#define BOARD_CAN1_RX_GPIO            (-1)
+#define BOARD_CAN1_STBY_GPIO          (-1)
 
 #define BOARD_IBUS_UART_NUM           UART_NUM_2
 #define BOARD_IBUS_TX_GPIO            (-1)

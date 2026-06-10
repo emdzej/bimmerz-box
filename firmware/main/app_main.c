@@ -21,6 +21,8 @@
 #include "log_bus.h"
 #include "obd_hal.h"
 #include "ota_manager.h"
+#include "rpc_can.h"
+#include "rpc_uart.h"
 #include "storage.h"
 #include "usb_host.h"
 #include "wifi_ap.h"
@@ -66,6 +68,8 @@ void app_main(void) {
     // registered match.
     ESP_ERROR_CHECK(http_static_start());
     ESP_ERROR_CHECK(jsonrpc_start());
+    ESP_ERROR_CHECK(rpc_uart_start(http_static_handle()));
+    ESP_ERROR_CHECK(rpc_can_start(http_static_handle()));
     ESP_ERROR_CHECK(admin_ui_start());
     ESP_ERROR_CHECK(ota_manager_init());
     ESP_ERROR_CHECK(http_static_install_fallback());

@@ -16,6 +16,11 @@
 
 #include "kline_proto.h"
 
+// Optional weak hook into rpc_uart — when /rpc/uart/0 holds the K-line,
+// the VM's xsend bails so the SGBD's error trap fires instead of our
+// transact stomping on the direct-UART app's bytes.
+extern bool rpc_uart_kline_locked(void) __attribute__((weak));
+
 static const char *TAG = "transport_kline";
 
 #define K_RX_BUF   1024
@@ -746,6 +751,14 @@ static edxn_error_t k_send(edxn_transport_t *t,
     if (!s_installed) return EDXN_ERR_TRANSPORT;
     if (resp_len) *resp_len = 0;
     if (!req || req_len == 0) return EDXN_ERR_OPERAND;
+
+    // Direct-UART app currently owns the wire (someone has /rpc/uart/0
+    // open). Refuse the VM-side send so the SGBD's comm-error trap
+    // fires cleanly instead of stomping on the other app's bytes.
+    if (rpc_uart_kline_locked && rpc_uart_kline_locked()) {
+        ESP_LOGW(TAG, "k_send: K-line held by /rpc/uart/0 — refusing");
+        return EDXN_ERR_TRANSPORT;
+    }
 
     // Match C# EdInterfaceObd's default CommParameter for K-line: when the
     // SGBD doesn't explicitly set concept via xsetpar, treat the request

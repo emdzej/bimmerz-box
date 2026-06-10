@@ -14,6 +14,8 @@ idf_component_register(
         ediabasx_platform
         http_static
         jsonrpc
+        rpc_uart
+        rpc_can
         admin_ui
         ota_manager
         usb_msc

@@ -39,9 +39,23 @@
 // ---- DoIP activation (P-FET high-side to OBD pin 8) -----------------------
 #define BOARD_DOIP_ACT_GPIO           (-1)
 
-// ---- CAN (TJA1051T/3) -----------------------------------------------------
-#define BOARD_CAN_TX_GPIO             (-1)
-#define BOARD_CAN_RX_GPIO             (-1)
+// ---- CAN — two independent buses (each TJA1051T/3) ------------------------
+// ESP32-P4 exposes three TWAI controllers via the GPIO matrix; we wire
+// the first two transceivers here. Bus 0 is the HS-CAN candidate
+// (PT-CAN, 500 kbit/s); bus 1 is the MS-CAN candidate (K-CAN,
+// 100/125 kbit/s). Final allocation depends on the OBD harness.
+//
+// STBY (S pin on TJA1051T): drive low for normal mode, high for
+// standby. At reset the GPIO floats and the transceiver's internal
+// pull-up holds S high → safe "no CAN load" default until firmware
+// brings the bus up.
+#define BOARD_CAN0_TX_GPIO            33
+#define BOARD_CAN0_RX_GPIO            26
+#define BOARD_CAN0_STBY_GPIO          0
+
+#define BOARD_CAN1_TX_GPIO            53
+#define BOARD_CAN1_RX_GPIO            47
+#define BOARD_CAN1_STBY_GPIO          1
 
 // ---- IBUS (TH3122) --------------------------------------------------------
 #define BOARD_IBUS_UART_NUM           UART_NUM_2
