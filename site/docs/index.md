@@ -79,7 +79,7 @@ communication. They differ only in how the hardware is put together.
 Active development. The Waveshare ESP32-P4 Module DEV-KIT is the
 canonical dev target — the firmware boots end-to-end against it. The
 custom PCB is in schematic capture. EDIABASX + INPAX have been
-verified against a real BMW MS42.0 DME over K-line; CAN is wired in
+verified on the bench as well as in the car; CAN is wired in
 firmware and waits on the production PCB.
 
 Follow along at [github.com/emdzej/bimmerz-box](https://github.com/emdzej/bimmerz-box).
