@@ -237,6 +237,136 @@ static const char *map_result_type(edxn_result_type_t t) {
     return "text";
 }
 
+// CP1252 → UTF-8 transcode for SGBD-emitted strings (ECU names, ORIGIN,
+// REVISION, INFO comments, FA_STREAM, IDENT byte arrays delivered via
+// `ergs`, …). BMW EDIABAS data is Windows-1252; WebSocket text frames
+// MUST be valid UTF-8 per RFC 6455 (browsers close with 1007 / "Could
+// not decode a text frame as UTF-8" on any non-UTF-8 byte). Without
+// this transcode, German umlauts and FA bytes ≥ 0x80 kill the WS
+// connection mid-response.
+//
+// Caller owns out[] (must be >= 3 * in_len + 1 bytes — worst case is
+// every byte mapping to a 3-byte UTF-8 sequence for the defined
+// 0x80..0x9F glyphs that live in the U+2000 range).
+//
+// **CP1252 undefined slots (0x81, 0x8D, 0x8F, 0x90, 0x9D)** decode as
+// the same-numbered control codepoint (U+0081, U+008D, …) — matches
+// what `new TextDecoder('windows-1252')` does in the browser, and the
+// TS interpreter's `cp1252ToUtf8` documents the C_FA_LESEN loop-3
+// counter at byte 0x81 as the canonical anchor for this behaviour
+// (mapping those to U+FFFD instead corrupts the identifier and yields
+// `ERROR_UNKNOWN_IDENTIFIER` in NCSX).
+static size_t cp1252_to_utf8(const uint8_t *in, size_t in_len,
+                              char *out, size_t out_cap) {
+    // Unicode code points for CP1252 bytes 0x80..0x9F (0 = undefined slot,
+    // which we then resolve to the same-value codepoint below).
+    static const uint16_t cp1252_high[32] = {
+        0x20AC, 0x0000, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+        0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x0000, 0x017D, 0x0000,
+        0x0000, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+        0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178,
+    };
+    size_t o = 0;
+    for (size_t i = 0; i < in_len; ++i) {
+        uint8_t b = in[i];
+        uint32_t cp;
+        if (b < 0x80) {
+            if (o + 1 >= out_cap) break;
+            out[o++] = (char)b;
+            continue;
+        } else if (b < 0xA0) {
+            cp = cp1252_high[b - 0x80];
+            if (cp == 0) cp = b;     // undefined slot → U+00XX
+        } else {
+            cp = b;                  // 0xA0..0xFF → U+00A0..U+00FF
+        }
+        if (cp < 0x800) {
+            if (o + 2 >= out_cap) break;
+            out[o++] = (char)(0xC0 | (cp >> 6));
+            out[o++] = (char)(0x80 | (cp & 0x3F));
+        } else {
+            if (o + 3 >= out_cap) break;
+            out[o++] = (char)(0xE0 |  (cp >> 12));
+            out[o++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+            out[o++] = (char)(0x80 |  (cp       & 0x3F));
+        }
+    }
+    if (o < out_cap) out[o] = '\0';
+    return o;
+}
+
+// UTF-8 → CP1252 transcode for JSON-RPC `params` strings coming into the
+// dongle. Inverse of `cp1252_to_utf8` above. Needed because the TS
+// interpreter does `utf8ToCp1252` at S-register write time — when the
+// SGBD reads a `pari` slot the byte stream IS CP1252. Without this
+// inverse, our C VM stores raw UTF-8 bytes in slots and BMW SGBDs like
+// FA.PRG see double-encoded data: a CP1252 byte that we exported as a
+// 2-byte UTF-8 sequence comes back in and the SGBD reads it as two
+// separate CP1252 bytes (yielding garbage that trips
+// ERROR_UNKNOWN_IDENTIFIER in FA_STREAM2STRUCT).
+//
+// Operates in-place when out == in. Returns the number of CP1252 bytes
+// written (NOT NUL-terminated by this function; caller does it if needed).
+// Codepoints outside CP1252's repertoire are replaced with '?' (0x3F),
+// matching `utf8ToCp1252`'s FALLBACK_BYTE.
+static uint8_t cp1252_byte_for_codepoint(uint32_t cp) {
+    if (cp < 0x80)                  return (uint8_t)cp;
+    if (cp >= 0xA0 && cp <= 0xFF)   return (uint8_t)cp;
+    // CP1252's five "undefined" slots — pass through as same-value bytes
+    // (matches TextDecoder('windows-1252') round-trip, anchored on
+    // C_FA_LESEN loop-3 counter at byte 0x81).
+    if (cp == 0x81 || cp == 0x8D || cp == 0x8F || cp == 0x90 || cp == 0x9D)
+        return (uint8_t)cp;
+    switch (cp) {
+        case 0x20AC: return 0x80;  case 0x201A: return 0x82;
+        case 0x0192: return 0x83;  case 0x201E: return 0x84;
+        case 0x2026: return 0x85;  case 0x2020: return 0x86;
+        case 0x2021: return 0x87;  case 0x02C6: return 0x88;
+        case 0x2030: return 0x89;  case 0x0160: return 0x8A;
+        case 0x2039: return 0x8B;  case 0x0152: return 0x8C;
+        case 0x017D: return 0x8E;  case 0x2018: return 0x91;
+        case 0x2019: return 0x92;  case 0x201C: return 0x93;
+        case 0x201D: return 0x94;  case 0x2022: return 0x95;
+        case 0x2013: return 0x96;  case 0x2014: return 0x97;
+        case 0x02DC: return 0x98;  case 0x2122: return 0x99;
+        case 0x0161: return 0x9A;  case 0x203A: return 0x9B;
+        case 0x0153: return 0x9C;  case 0x017E: return 0x9E;
+        case 0x0178: return 0x9F;
+        default:     return 0x3F;  // '?' fallback
+    }
+}
+
+static size_t utf8_to_cp1252(const char *in, size_t in_len,
+                              uint8_t *out, size_t out_cap) {
+    size_t i = 0, o = 0;
+    while (i < in_len && o < out_cap) {
+        uint8_t b = (uint8_t)in[i];
+        uint32_t cp;
+        if (b < 0x80) {
+            cp = b; i += 1;
+        } else if ((b & 0xE0) == 0xC0 && i + 1 < in_len) {
+            cp = ((uint32_t)(b & 0x1F) << 6) | (in[i + 1] & 0x3F);
+            i += 2;
+        } else if ((b & 0xF0) == 0xE0 && i + 2 < in_len) {
+            cp = ((uint32_t)(b & 0x0F) << 12)
+               | ((uint32_t)(in[i + 1] & 0x3F) << 6)
+               |  (uint32_t)(in[i + 2] & 0x3F);
+            i += 3;
+        } else if ((b & 0xF8) == 0xF0 && i + 3 < in_len) {
+            cp = ((uint32_t)(b & 0x07) << 18)
+               | ((uint32_t)(in[i + 1] & 0x3F) << 12)
+               | ((uint32_t)(in[i + 2] & 0x3F) << 6)
+               |  (uint32_t)(in[i + 3] & 0x3F);
+            i += 4;
+        } else {
+            // Stray continuation / invalid lead — emit '?' and advance one byte.
+            cp = 0xFFFD; i += 1;
+        }
+        out[o++] = cp1252_byte_for_codepoint(cp);
+    }
+    return o;
+}
+
 // Render one result set as { result_name: { name, type, value }, ... }.
 // Mirrors the EdiabasResultSet shape the TS server emits — keyed by the
 // result name, with each entry carrying its declared type and value. The
@@ -262,16 +392,18 @@ static cJSON *render_result_set(const edxn_result_set_t *set) {
                 cJSON_AddNumberToObject(entry, "value", e->value.f);
                 break;
             case EDXN_TYPE_STRING: {
-                char stack[256];
+                // CP1252 → UTF-8 transcode. Worst case 3× input length
+                // (defined CP1252 0x80..0x9F glyphs map into U+2000+).
+                size_t cap = e->value.bin.len * 3 + 1;
+                char stack[512];
                 char *buf = stack;
                 bool heap = false;
-                if (e->value.bin.len + 1 > sizeof(stack)) {
-                    buf = malloc(e->value.bin.len + 1);
+                if (cap > sizeof(stack)) {
+                    buf = malloc(cap);
                     if (!buf) { cJSON_Delete(entry); continue; }
                     heap = true;
                 }
-                memcpy(buf, e->value.bin.data, e->value.bin.len);
-                buf[e->value.bin.len] = '\0';
+                cp1252_to_utf8(e->value.bin.data, e->value.bin.len, buf, cap);
                 cJSON_AddStringToObject(entry, "value", buf);
                 if (heap) free(buf);
                 break;
@@ -341,11 +473,28 @@ static cJSON *handle_job(const cJSON *p) {
     }
 
     // Args may be a string ("0x12;0x04") or a binary array of params.
+    // String args arrive as UTF-8 (JSON wire) but the C VM stores each
+    // semicolon-separated slot verbatim and the SGBD reads them as
+    // CP1252. Without this transcode, any FA/IDENT byte stream that
+    // got CP1252→UTF-8 on output (via render_result_set) gets shipped
+    // back to us as a UTF-8 string and we'd double-encode it — exactly
+    // what trips FA.PRG's FA_STREAM2STRUCT into ERROR_UNKNOWN_IDENTIFIER.
+    // Mirrors the TS interpreter's utf8ToCp1252 at S-register write time.
     const char *args = "";
+    char args_cp1252[1024];   // UTF-8→CP1252 is non-expanding; this caps
+                              // at slightly more than the VM's per-job
+                              // param budget. (EDXN_PARAM_MAXLEN * a few.)
     uint8_t bin[256];
     size_t bin_len = 0;
     if (cJSON_IsString(aj) && aj->valuestring) {
-        args = aj->valuestring;
+        size_t in_len = strlen(aj->valuestring);
+        if (in_len > 0) {
+            size_t out_len = utf8_to_cp1252(aj->valuestring, in_len,
+                                             (uint8_t *)args_cp1252,
+                                             sizeof(args_cp1252) - 1);
+            args_cp1252[out_len] = '\0';
+            args = args_cp1252;
+        }
     } else if (cJSON_IsArray(aj)) {
         bin_len = decode_bytes(aj, bin, sizeof(bin));
     }

@@ -54,6 +54,15 @@ CONFIG_HTTPD_WS_SUPPORT=y
 CONFIG_HTTPD_MAX_URI_LEN=512
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
 
+# ---- LWIP TCP window -----------------------------------------------------
+# Defaults are 5760 B (4 × MSS), which throttles large JSON-RPC responses
+# (FA reads, full SGBD listings) hard — the server stalls waiting for ACKs
+# on every 4-segment window. 14400 B (10 × 1440 MSS) keeps the pipe full
+# on the AP-local link without burning much RAM (10 KB per direction
+# × max_open_sockets).
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=14400
+CONFIG_LWIP_TCP_WND_DEFAULT=14400
+
 # ---- Compiler -------------------------------------------------------------
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 CONFIG_COMPILER_WARN_WRITE_STRINGS=y

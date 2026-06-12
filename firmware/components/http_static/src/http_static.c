@@ -380,10 +380,32 @@ esp_err_t http_static_start(void) {
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.uri_match_fn = httpd_uri_match_wildcard;
     cfg.lru_purge_enable = true;
-    // Bumped to fit admin_ui (/admin/, /api/*) + jsonrpc (/rpc) + our
-    // own wildcard. Each route counts; raise as more land.
-    cfg.max_uri_handlers = 16;
+    // Counted live: 12 (admin_ui) + 1 (jsonrpc) + 1 (rpc_uart) +
+    // 1 (rpc_can) + 1 (captive accept POST) + 2 (wildcard GET+HEAD)
+    // = 18 today. 24 leaves room for the next two endpoints without
+    // another silent boot-loop. ESP_ERROR_CHECK on
+    // http_static_install_fallback() panics if this is too low.
+    cfg.max_uri_handlers = 24;
     cfg.stack_size = 8192;
+
+    // Long-running JSON-RPC jobs (NCSX C_FA_LESEN, EDIABASX flash
+    // reads, anything that does many DS2 / KWP round-trips on the
+    // slow K-line) hold the WS handler for tens of seconds. The
+    // default 5 s socket timeouts close the connection mid-job and
+    // the client sees "WebSocket error". 120 s is well past the
+    // longest job we've measured (~30 s for FA + coding read on
+    // E46) with margin for slow ECUs.
+    cfg.recv_wait_timeout = 120;
+    cfg.send_wait_timeout = 120;
+
+    // Keepalive — push small TCP probes during idle stretches so a
+    // long-running job doesn't get killed by an intermediate NAT
+    // (or the OS's own dead-connection detector) deciding the
+    // socket has gone quiet.
+    cfg.keep_alive_enable    = true;
+    cfg.keep_alive_idle      = 30;   // s of idle before first probe
+    cfg.keep_alive_interval  = 10;   // s between probes
+    cfg.keep_alive_count     = 6;    // dead after 6 missed probes
 
     esp_err_t err = httpd_start(&s_server, &cfg);
     if (err != ESP_OK) {
