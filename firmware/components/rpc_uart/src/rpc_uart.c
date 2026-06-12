@@ -507,17 +507,46 @@ static char *dispatch(int idx, int fd, httpd_handle_t srv,
 
 // ---- WebSocket handler ----------------------------------------------------
 
+// On WS-frame re-entries, esp_http_server doesn't repopulate `req->uri`
+// (the cached `sd->ws_handler` is invoked directly — see
+// httpd_parse.c). We have to stash the UART index at HANDSHAKE time
+// (HTTP_GET, while req->uri is still valid) and read it back per
+// frame from the session context.
+//
+// Encoding: we store `idx + 1` so that the NULL default (= "not set
+// yet") is distinguishable from a legitimate idx of 0. The pointer
+// is never dereferenced — it's just a uintptr_t stuffed into the
+// ctx slot.
+
+static int session_idx_get(httpd_req_t *req) {
+    intptr_t v = (intptr_t)httpd_sess_get_ctx(req->handle, httpd_req_to_sockfd(req));
+    return v > 0 ? (int)(v - 1) : -1;
+}
+
+static void session_idx_set(httpd_req_t *req, int idx) {
+    httpd_sess_set_ctx(req->handle, httpd_req_to_sockfd(req),
+                        (void *)(intptr_t)(idx + 1), NULL);
+}
+
 static esp_err_t ws_handler(httpd_req_t *req) {
-    int idx = parse_uart_index(req->uri);
-    if (idx < 0) {
-        return httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "no such uart");
-    }
+    int idx;
     if (req->method == HTTP_GET) {
-        // Handshake complete — esp_http_server returns ESP_OK and the
-        // connection becomes a WS. Subsequent calls are frames.
+        // Handshake. req->uri is still valid here — parse, stash,
+        // and let esp_http_server complete the upgrade.
+        idx = parse_uart_index(req->uri);
+        if (idx < 0) {
+            return httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "no such uart");
+        }
+        session_idx_set(req, idx);
         ESP_LOGI(TAG, "ws[%d] connection opened (fd=%d)", idx,
                  httpd_req_to_sockfd(req));
         return ESP_OK;
+    }
+    // Subsequent WS frames — req->uri is unset, look up from session ctx.
+    idx = session_idx_get(req);
+    if (idx < 0) {
+        ESP_LOGW(TAG, "ws frame on socket with no stashed idx — closing");
+        return ESP_FAIL;
     }
 
     httpd_ws_frame_t frame = { 0 };

@@ -20,4 +20,5 @@ export const apps: AppTile[] = [
   { name: 'NCSX',     href: '/ncsx/',     blurb: 'NCS-Expert coding' },
   { name: 'NFSX',     href: '/nfsx/',     blurb: 'ECU flashing' },
   { name: 'TUNEX',    href: '/tunex/',    blurb: 'Firmware editor + XDF' },
+  { name: 'DASHX',    href: '/dashx/',    blurb: 'Live CAN dashboard — gauges, lamps, frame log' },
 ]

@@ -573,15 +573,35 @@ static char *dispatch(int idx, int fd, httpd_handle_t srv,
 
 // ---- WebSocket handler ----------------------------------------------------
 
+// See rpc_uart.c — esp_http_server doesn't keep `req->uri` populated on
+// WS-frame re-entries, so we stash the CAN index at handshake time and
+// read it back per frame.
+static int session_idx_get(httpd_req_t *req) {
+    intptr_t v = (intptr_t)httpd_sess_get_ctx(req->handle, httpd_req_to_sockfd(req));
+    return v > 0 ? (int)(v - 1) : -1;
+}
+
+static void session_idx_set(httpd_req_t *req, int idx) {
+    httpd_sess_set_ctx(req->handle, httpd_req_to_sockfd(req),
+                        (void *)(intptr_t)(idx + 1), NULL);
+}
+
 static esp_err_t ws_handler(httpd_req_t *req) {
-    int idx = parse_can_index(req->uri);
-    if (idx < 0) {
-        return httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "no such can");
-    }
+    int idx;
     if (req->method == HTTP_GET) {
+        idx = parse_can_index(req->uri);
+        if (idx < 0) {
+            return httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "no such can");
+        }
+        session_idx_set(req, idx);
         ESP_LOGI(TAG, "ws[%d] connection opened (fd=%d)", idx,
                  httpd_req_to_sockfd(req));
         return ESP_OK;
+    }
+    idx = session_idx_get(req);
+    if (idx < 0) {
+        ESP_LOGW(TAG, "ws frame on socket with no stashed idx — closing");
+        return ESP_FAIL;
     }
     httpd_ws_frame_t frame = { 0 };
     esp_err_t err = httpd_ws_recv_frame(req, &frame, 0);

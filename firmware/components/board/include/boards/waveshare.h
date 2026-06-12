@@ -59,10 +59,14 @@
 #define BOARD_LLINE_DRV_GPIO          (-1)
 #define BOARD_DOIP_ACT_GPIO           (-1)
 
-// CAN (no transceivers on the dev board — rpc_can returns can_not_present)
-#define BOARD_CAN0_TX_GPIO            (-1)
-#define BOARD_CAN0_RX_GPIO            (-1)
-#define BOARD_CAN0_STBY_GPIO          (-1)
+// CAN — bench-wired TJA1051T on TWAI0, matching the dongle.h pin map so
+// firmware behaviour is identical across boards. TJA1051T S pin on
+// GPIO 0: floats at reset (transceiver internal pull-up keeps it in
+// standby), then driven low by rpc_can on open. CAN1 stays unwired
+// until a second transceiver lands on the bench.
+#define BOARD_CAN0_TX_GPIO            33
+#define BOARD_CAN0_RX_GPIO            26
+#define BOARD_CAN0_STBY_GPIO          0
 #define BOARD_CAN1_TX_GPIO            (-1)
 #define BOARD_CAN1_RX_GPIO            (-1)
 #define BOARD_CAN1_STBY_GPIO          (-1)
