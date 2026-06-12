@@ -58,8 +58,8 @@ coding workflows without external tooling.
    │  ── SDIO 4-bit ──── microSD (push-push, side cutout)                │
    │  ── RMII (9 pins) ── LAN8720A ── HR911105A magjack ── OBD 3/11/12/13│
    │                                                                     │
-   │  ── UART [74LVC2T45]── L9637D ──┬─[TMUX1208 ch1]── OBD pin 7        │
-   │                                 └─[TMUX1208 ch2]── OBD pin 8        │
+   │  ── UART ── L9637D ──┬─[TMUX1208 ch1]── OBD pin 7                   │
+   │                      └─[TMUX1208 ch2]── OBD pin 8                   │
    │  ── GPIO ── KLINE7_EN  ─► TMUX1208 ch1                              │
    │  ── GPIO ── KLINE8_EN ─┬─► TMUX1208 ch2                             │
    │                        │  (74LVC1G08 AND with !DOIP_ACT)            │
@@ -143,7 +143,7 @@ coding workflows without external tooling.
   - **Pin 7 only** — F/G chassis or known-pin-7 ECUs.
   - **Pin 8 only** — rare; certain legacy modules.
   - **Both ON** — default for E-series unknown-target diagnostics. Pins 7 and 8 tie to the same K-line node at the switch outputs; safe for open-drain operation.
-- **74LVC2T45** bidirectional translator between the 5 V CMOS L9637D logic side and the 3.3 V P4 UART.
+- L9637D VCC is tied to the 3.3 V rail (same as the P4 UART) — no level shifter needed. Verified on the bench with the MikroE ISO 9141 Click set to its 3.3 V jumper.
 - L9637D VS pulled from VBAT (battery-direct, after protection).
 
 ### 6.2 L-line driver
@@ -165,7 +165,7 @@ coding workflows without external tooling.
 ### 6.4 IBUS
 
 - **TH3122** single-wire-bus transceiver (BMW IBUS standard part).
-- VS pulled from VBAT (after protection); logic side at 5 V translated by a second 74LVC channel or resistive divider.
+- VS pulled from VBAT (after protection); logic side is 5 V and needs a level shifter to the P4's 3.3 V UART (a small voltage translator IC, e.g. a 74LVC1T45 channel — unlike the K-line side, IBUS isn't 3.3-V-tolerant).
 - Connected to a P4 UART (separate from K-line UART).
 - Exposed to the user via a **3-pin JST-PH side header**:
   - Pin 1: IBUS data

@@ -26,10 +26,13 @@
 #define BOARD_ETH_PHY_ADDR            1
 #define BOARD_ETH_PHY_RST_GPIO        (-1)
 
-// ---- K-line (L9637D + TMUX1208 + 74LVC2T45) -------------------------------
+// ---- K-line (L9637D + TMUX1208) -------------------------------------------
+// L9637D runs from 3.3 V on this board — no level shifter needed (VCC pin
+// driven from the same 3V3 rail as the P4 UART). Confirmed on the bench
+// against the MikroE ISO 9141 Click set to its 3.3 V jumper option.
 #define BOARD_KLINE_UART_NUM          UART_NUM_1
-#define BOARD_KLINE_TX_GPIO           (-1)   // through 74LVC2T45 → L9637D TX
-#define BOARD_KLINE_RX_GPIO           (-1)   // through 74LVC2T45 ← L9637D RX
+#define BOARD_KLINE_TX_GPIO           (-1)   // → L9637D TxD (pin 3)
+#define BOARD_KLINE_RX_GPIO           (-1)   // ← L9637D RxD (pin 4)
 #define BOARD_KLINE7_EN_GPIO          (-1)   // TMUX1208 ch1 enable
 #define BOARD_KLINE8_EN_GPIO          (-1)   // TMUX1208 ch2 enable (HW-interlocked with DOIP_ACT)
 

@@ -1,0 +1,77 @@
+name: Deploy site to GitHub Pages
+
+# Builds the VitePress site under `site/` and publishes to
+# box.bimmerz.app via GitHub Pages.
+#
+# Triggers on any push to main that touches `site/**` (or the workflow
+# itself), plus manual dispatch from the Actions tab.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/site-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Cancel in-flight deploys when a new push lands — last commit wins.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: site
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # VitePress' `lastUpdated` reads git log.
+
+      - name: Setup pnpm
+        # `packageManager` in site/package.json (pnpm@10.33.1) is the
+        # canonical version source; pnpm/action-setup picks it up.
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: site/package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build site
+        run: pnpm build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
