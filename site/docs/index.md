@@ -64,10 +64,10 @@ CAN frames); the browser is just a screen.
 
 - **[DIY from modules](./products/diy-modules)** — Waveshare ESP32-P4
   dev kit + MikroE click breakouts + jumper wires. No PCB fab, no SMD
-  reflow. Up and running in an afternoon. ~€100 in modules.
+  reflow. Up and running in an afternoon. Cost TBC.
 - **[DIY custom PCB](./products/diy-pcb)** — KiCad design + firmware
   source, all open. Reflow your own board for an OBD-II-sized finished
-  unit. ~€60–80 in parts.
+  unit. Cost TBC.
 - **[Ready-to-ship](./products/ready)** — assembled, tested, comes with
   a case and a labelled cable. Plug-and-play.
 

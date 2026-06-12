@@ -6,11 +6,10 @@ units come assembled, tested, and pre-flashed.
 ## Status
 
 **Pre-launch.** The custom PCB is in schematic review; production
-runs start once the design is locked. We're holding a waitlist so
-the first batch goes to people who actually want one.
+runs start once the design is locked. We'll be accepting
+pre-orders when we're ready — **timelines unknown** for now.
 
-[Join the waitlist →](#waitlist) (form at the bottom of this page,
-or email `box@bimmerz.app`).
+Details below describe the unit as it'll ship when the time comes.
 
 ## What you get
 
@@ -47,26 +46,18 @@ or email `box@bimmerz.app`).
 
 ## Pricing
 
-To be announced when the first batch is ready. Aiming for "less
-than a half-decent OBD-II reader, more than a Chinese ELM327".
+To be announced when the first batch is ready.
 
-## Waitlist
+## Pre-orders
 
-We'll email you when:
+We'll open pre-orders when the hardware is finalised and we have a
+realistic ship-date. **No timeline yet** — schematic review is
+ongoing, the PCB hasn't been fabbed, and we'd rather not commit to
+dates we can't keep.
 
-1. The first batch is open for pre-order (price + ETA confirmed).
-2. Subsequent batches ship.
-
-We won't email you for anything else. To join, drop a line to
-`box@bimmerz.app` with:
-
-- Your name
-- Which chassis you'd use it on (E36 / E39 / E46 / E60 / E83 / …)
-- A guess at how many you'd want (1 is fine — gauges family
-  pre-orders vs garage pre-orders)
-
-Or [open a GitHub issue tagged `waitlist`](https://github.com/emdzej/bimmerz-box/issues/new?labels=waitlist&title=Waitlist%3A+%5Bchassis%5D)
-if you'd rather keep it public.
+If you want a heads-up when that changes, [watch the repo on
+GitHub](https://github.com/emdzej/bimmerz-box) (Releases tab) —
+we'll cut a release with the pre-order announcement.
 
 ## Support
 

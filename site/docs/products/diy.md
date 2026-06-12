@@ -10,7 +10,7 @@ construction differs.
 |----------------------------|------------------------------------------------------------|-----------------------------------------------|
 | **Construction**           | Dev board + click / breakout boards + jumper wires         | Reflow your own PCB, source SMD parts         |
 | **Tools**                  | Soldering iron (for headers / wires)                       | Reflow oven or hot-air station, paste, stencil|
-| **Cost**                   | ~€100 (modules)                                            | ~€60–80 (parts + PCB fab)                     |
+| **Cost**                   | TBC                                                        | TBC                                           |
 | **Time to first boot**     | A couple of hours                                          | A weekend                                     |
 | **Size**                   | Big — stack of breakouts in a 3D-printed enclosure         | OBD-II-dongle sized (~55 × 46 × 15 mm)        |
 | **Looks like**             | A prototype                                                | A finished product                            |

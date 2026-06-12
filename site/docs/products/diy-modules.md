@@ -28,7 +28,7 @@ Module on a breakout board with USB-C, microSD, RJ45, headers
 broken out.
 
 - [Waveshare product page](https://www.waveshare.com/esp32-p4-module-dev-kit.htm)
-- ~€30, includes a mikroBUS-style header for click boards.
+- Includes a mikroBUS-style header for click boards.
 
 ### K-line transceiver
 
@@ -37,7 +37,6 @@ straight into the dev kit's mikroBUS header. Set its jumper to
 **3.3 V** (the L9637D is happy at 3.3 V, no level shifter needed).
 
 - [MikroE product page](https://www.mikroe.com/iso-9141-click)
-- ~€20.
 
 For older BMW chassis you'll also want a **20-pin-to-OBD-II adapter
 cable** so you can reach the under-bonnet diagnostic socket.
@@ -135,25 +134,14 @@ Once flashed, follow the [quick start](/quickstart) — the box hosts
 the same Wi-Fi AP and the same web apps regardless of how its
 hardware is laid out.
 
-## Cost summary
+## Cost
 
-Ball-park, assuming you have nothing on hand:
-
-| Item                                | Cost     |
-|-------------------------------------|----------|
-| Waveshare ESP32-P4 Module DEV-KIT   | ~€30     |
-| MikroE ISO 9141 Click               | ~€20     |
-| CAN transceiver breakout ×2         | ~€10 ea  |
-| microSD 16 GB                       | ~€5      |
-| OBD-II bare-wire cable              | ~€10     |
-| 12 V → 5 V buck or PD trigger       | ~€5      |
-| Jumper wires, headers, enclosure    | ~€10     |
-| **Total**                           | **~€100**|
-
-A bit more than the custom-PCB BOM, but you skip the PCB fab cost
-(JLCPCB minimum order €25-ish for a small batch) and the soldering
-station investment — net cost is similar, time investment is much
-lower.
+**TBC.** A finalised module list with verified prices will land
+once the bench-tested combinations are pinned down. As a rough
+sanity check the whole stack should come in under what the custom
+PCB build costs — you skip the PCB fab cycle, the SMD parts, and
+the soldering-station investment, paying instead for the markup on
+pre-assembled modules.
 
 ## When to pick this path
 

@@ -8,7 +8,7 @@ and "I want to solder" budget.
 
 |                                | [DIY — modules](./diy-modules)                              | [DIY — custom PCB](./diy-pcb)                                       | [Ready-to-ship](./ready)                                       |
 |--------------------------------|-------------------------------------------------------------|---------------------------------------------------------------------|----------------------------------------------------------------|
-| **Price**                      | ~€100 in modules                                            | ~€60–80 in parts (PCB + BOM)                                        | TBA (waitlist)                                                 |
+| **Price**                      | TBC                                                         | TBC                                                                 | TBA                                                            |
 | **Time to first boot**         | An afternoon                                                | A weekend — order PCB + parts, reflow, flash                        | Plug in, done                                                  |
 | **Soldering required**         | Headers + jumper wires                                      | Yes (0805 passives, SOIC/QFN ICs, the module is castellated)        | None                                                           |
 | **PCB fab order**              | No                                                          | Yes (JLCPCB / PCBWay)                                               | Done for you                                                   |
@@ -44,8 +44,8 @@ the dongle's OTA mechanism (admin page → upload `bimmerz_box.bin`).
 - **I want to build the production hardware** →
   [DIY custom PCB](./diy-pcb) — KiCad, BOM, gerbers, soldering
   notes.
-- **I want to plug it in** → [Ready-to-ship](./ready) — waitlist,
-  delivery, pre-flashed configuration.
+- **I want to plug it in** → [Ready-to-ship](./ready) — pre-orders
+  open when the hardware is finalised, timelines unknown for now.
 
 The middle of the road — [DIY hub](./diy) — has both paths side by
 side if you can't decide.
