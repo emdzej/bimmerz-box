@@ -1,19 +1,22 @@
 # Get a bimmerz box
 
-Two ways into the same hardware. Both run the same firmware and host
-the same toolkit — pick the path that fits your time vs money budget.
+Three paths into the same hardware. All three run identical firmware
+and host the same toolkit — pick the one that fits your time, money,
+and "I want to solder" budget.
 
 ## At a glance
 
-|                                | DIY                                                                 | Ready-to-ship                                                  |
-|--------------------------------|---------------------------------------------------------------------|----------------------------------------------------------------|
-| **Price**                      | ~€60–80 in parts (BOM)                                              | TBA (waitlist)                                                  |
-| **Time to first boot**         | A weekend — order PCB + parts, solder, flash                         | Plug in, done                                                  |
-| **Soldering required**         | Yes (0805 passives, SOIC/QFN ICs, the module is castellated)        | None                                                           |
-| **What you get**               | KiCad design, BOM, gerbers, firmware                                | Assembled board, case, cable, factory-flashed firmware         |
-| **Customisable**               | Fully — fork the schematic, add transceivers, change the housing    | Firmware is OTA-updatable; hardware is fixed                   |
-| **Warranty**                   | None (it's your soldering iron)                                     | Manufacturing defects covered                                  |
-| **Support**                    | Community via GitHub                                                | Community + direct email for shipped units                     |
+|                                | [DIY — modules](./diy-modules)                              | [DIY — custom PCB](./diy-pcb)                                       | [Ready-to-ship](./ready)                                       |
+|--------------------------------|-------------------------------------------------------------|---------------------------------------------------------------------|----------------------------------------------------------------|
+| **Price**                      | ~€100 in modules                                            | ~€60–80 in parts (PCB + BOM)                                        | TBA (waitlist)                                                 |
+| **Time to first boot**         | An afternoon                                                | A weekend — order PCB + parts, reflow, flash                        | Plug in, done                                                  |
+| **Soldering required**         | Headers + jumper wires                                      | Yes (0805 passives, SOIC/QFN ICs, the module is castellated)        | None                                                           |
+| **PCB fab order**              | No                                                          | Yes (JLCPCB / PCBWay)                                               | Done for you                                                   |
+| **Size**                       | Stack of breakouts; 3D-printed enclosure                    | OBD-II-dongle (~55 × 46 × 15 mm)                                    | OBD-II-dongle in a moulded case                                |
+| **What you get**               | Dev board + click boards + cabling + firmware build         | KiCad design, BOM, gerbers, firmware                                | Assembled board, case, cable, factory-flashed firmware         |
+| **Customisable**               | Fully — swap any module, any GPIO                           | Fully — fork the schematic, add transceivers, change the housing    | Firmware is OTA-updatable; hardware is fixed                   |
+| **Warranty**                   | None (it's your jumper wires)                               | None (it's your soldering iron)                                     | Manufacturing defects covered                                  |
+| **Support**                    | Community via GitHub                                        | Community via GitHub                                                | Community + direct email for shipped units                     |
 
 ## Same hardware on both paths
 
@@ -35,7 +38,14 @@ the dongle's OTA mechanism (admin page → upload `bimmerz_box.bin`).
 
 ## Pick a path
 
-- **I want to build it** → [DIY](./diy) — KiCad, BOM, soldering
-  notes, where to source parts.
+- **I want to start hacking the firmware today** →
+  [DIY from modules](./diy-modules) — dev board + click breakouts +
+  jumper wires. No PCB fab.
+- **I want to build the production hardware** →
+  [DIY custom PCB](./diy-pcb) — KiCad, BOM, gerbers, soldering
+  notes.
 - **I want to plug it in** → [Ready-to-ship](./ready) — waitlist,
   delivery, pre-flashed configuration.
+
+The middle of the road — [DIY hub](./diy) — has both paths side by
+side if you can't decide.

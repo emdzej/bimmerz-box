@@ -60,15 +60,19 @@ That's the whole user-facing model. The dongle does the heavy lifting
 (running BEST2 SGBD bytecode, framing DS2 / KWP2000 telegrams, decoding
 CAN frames); the browser is just a screen.
 
-## Two flavours
+## Three ways to get one
 
-- **[DIY](./products/diy)** — KiCad schematic, BOM, and firmware are open.
-  Stuff a PCB, flash the binary, you have a box. ~€60–80 in parts.
-- **[Ready-to-ship](./products/ready)** — assembled, tested, comes with a case
-  and a labelled cable. Plug-and-play.
+- **[DIY from modules](./products/diy-modules)** — Waveshare ESP32-P4
+  dev kit + MikroE click breakouts + jumper wires. No PCB fab, no SMD
+  reflow. Up and running in an afternoon. ~€100 in modules.
+- **[DIY custom PCB](./products/diy-pcb)** — KiCad design + firmware
+  source, all open. Reflow your own board for an OBD-II-sized finished
+  unit. ~€60–80 in parts.
+- **[Ready-to-ship](./products/ready)** — assembled, tested, comes with
+  a case and a labelled cable. Plug-and-play.
 
-Either path lands you with the same hardware, same firmware, same
-features.
+All three land you with the same firmware, same web apps, same ECU
+communication. They differ only in how the hardware is put together.
 
 ## Status
 

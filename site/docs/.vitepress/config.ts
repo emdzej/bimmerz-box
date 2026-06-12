@@ -41,7 +41,8 @@ export default defineConfig({
         text: "Get one",
         items: [
           { text: "Overview", link: "/products/" },
-          { text: "DIY (build it yourself)", link: "/products/diy" },
+          { text: "DIY — from modules", link: "/products/diy-modules" },
+          { text: "DIY — custom PCB", link: "/products/diy-pcb" },
           { text: "Ready-to-ship", link: "/products/ready" },
         ],
       },
@@ -57,8 +58,15 @@ export default defineConfig({
         { text: "Troubleshooting", link: "/guide/troubleshooting" },
       ],
       "/products/": [
-        { text: "DIY vs ready-to-ship", link: "/products/" },
-        { text: "DIY build", link: "/products/diy" },
+        { text: "Compare the paths", link: "/products/" },
+        {
+          text: "DIY",
+          items: [
+            { text: "Pick your DIY path", link: "/products/diy" },
+            { text: "From modules", link: "/products/diy-modules" },
+            { text: "Custom PCB", link: "/products/diy-pcb" },
+          ],
+        },
         { text: "Ready-to-ship", link: "/products/ready" },
       ],
     },
