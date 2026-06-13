@@ -2,7 +2,10 @@
 
 Build the production hardware from scratch. Everything you need —
 schematic, PCB layout, BOM, firmware source — is in the
-[bimmerz-box repo](https://github.com/emdzej/bimmerz-box) under MIT.
+[bimmerz-box repo](https://github.com/emdzej/bimmerz-box) under
+[PolyForm Noncommercial 1.0.0](https://github.com/emdzej/bimmerz-box/blob/main/LICENSE)
+(free for personal / hobby / research; commercial use needs a
+separate licence).
 
 ::: tip Looking for the easier path?
 This page is the **from-scratch** build (fab your own PCB, source
@@ -130,4 +133,4 @@ defines for any GPIO reassignment.
 - **Firmware:** [firmware/](https://github.com/emdzej/bimmerz-box/tree/main/firmware)
 - **Dashboard SPA:** [dashboard/](https://github.com/emdzej/bimmerz-box/tree/main/dashboard)
 
-License: MIT.
+License: [PolyForm Noncommercial 1.0.0](https://github.com/emdzej/bimmerz-box/blob/main/LICENSE).

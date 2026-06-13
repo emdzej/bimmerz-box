@@ -24,7 +24,7 @@ features:
   - title: Wi-Fi access point
     details: No pairing, no Bluetooth profile drama. The dongle exposes its own AP and a captive portal that drops you straight into the dashboard.
   - title: Open hardware + firmware
-    details: ESP32-P4 module, KiCad schematic, all source under MIT. Build your own, modify ours, or buy a ready-to-ship unit.
+    details: ESP32-P4 module, KiCad schematic, all source under PolyForm Noncommercial. Build your own, modify ours, or buy a ready-to-ship unit.
   - title: All the bimmerz tools
     details: EDIABASX (diagnostic jobs), INPAX (live values), NCSX (coding), NFSX (flashing), TUNEX (tuning) — all run against the same dongle.
   - title: Updates over the air
