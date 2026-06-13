@@ -201,6 +201,34 @@
     .row-action.danger:hover { color: var(--m-red); }
     .files-empty { color: var(--text-3); font-style: italic; padding: 12px 0; }
     .files-busy { color: var(--text-3); padding: 12px 0; }
+
+    /* ---- OTA section ---- */
+    .ota-file-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+    .ota-file-row input[type="file"] { flex: 1; }
+    .progress {
+      height: 8px; background: var(--bg-alt); border-radius: 4px;
+      overflow: hidden; margin: 12px 0 6px;
+    }
+    .progress-bar {
+      height: 100%; width: 0%;
+      background: var(--m-light-strong); transition: width .15s;
+    }
+    .ota-status {
+      font-size: 12px; color: var(--text-3);
+      font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+      min-height: 1em;
+    }
+    .ota-hint {
+      color: var(--text-3); font-size: 12px; margin: 14px 0 0;
+      line-height: 1.5;
+    }
+    .ota-hint code {
+      background: var(--bg-alt); padding: 1px 5px; border-radius: 3px;
+      font-size: 11px;
+    }
+    .ota-warn {
+      color: var(--m-amber, #d4a85a); margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -217,6 +245,31 @@
     <div class="info-grid" id="info">
       <span>Loading…</span><span></span>
     </div>
+  </section>
+
+  <h2>Firmware update</h2>
+  <section>
+    <div class="ota-file-row">
+      <input id="ota-file" type="file" accept=".bin">
+      <button id="ota-flash">Flash &amp; restart</button>
+    </div>
+    <div class="progress" id="ota-progress-wrap" hidden>
+      <div class="progress-bar" id="ota-bar"></div>
+    </div>
+    <div class="ota-status" id="ota-status"></div>
+    <p class="ota-hint">
+      Pick the <code>bimmerz_box.bin</code> from your local
+      <code>firmware/build/</code>. The image streams into the inactive
+      OTA slot; on success the dongle reboots into it within 500&nbsp;ms.
+      <br>
+      <strong>Rollback armed</strong> — if the new firmware crashes
+      within the first 60&nbsp;s after boot, the bootloader falls back
+      to the previous slot automatically. You won't be bricked by a
+      bad upload.
+      <span class="ota-warn">⚠ No authentication and no image
+      signature today. Anyone on this Wi-Fi can flash. Treat AP access
+      as physical access.</span>
+    </p>
   </section>
 
   <h2>Wi-Fi Access Point</h2>
@@ -590,6 +643,79 @@ $("files-mkdir").onclick = async () => {
 };
 
 loadFiles(FS_ROOT);
+
+// ---- OTA -----------------------------------------------------------------
+
+function setOtaBusy(busy) {
+  $("ota-flash").disabled = busy;
+  $("ota-file").disabled  = busy;
+  $("ota-progress-wrap").hidden = !busy && $("ota-bar").style.width === "";
+}
+
+function setOtaProgress(pct, label) {
+  $("ota-progress-wrap").hidden = false;
+  $("ota-bar").style.width = pct.toFixed(1) + "%";
+  $("ota-status").textContent = label;
+}
+
+function setOtaStatus(text, kind) {
+  const el = $("ota-status");
+  el.textContent = text;
+  el.style.color = kind === "err" ? "var(--m-red)"
+                 : kind === "ok"  ? "var(--m-light)"
+                 : "var(--text-3)";
+}
+
+$("ota-flash").onclick = () => {
+  const file = $("ota-file").files[0];
+  if (!file) { toast("Pick a .bin first", "err"); return; }
+  if (!file.name.endsWith(".bin")) {
+    if (!confirm(`"${file.name}" doesn't look like a .bin. Flash anyway?`)) return;
+  }
+
+  setOtaBusy(true);
+  setOtaProgress(0, `Uploading 0 / ${file.size.toLocaleString()} B…`);
+
+  // XHR (not fetch) because fetch doesn't expose upload progress
+  // reliably across browsers, and a multi-MB upload over the AP
+  // benefits a lot from a visible bar.
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/settings/ota/firmware");
+  xhr.setRequestHeader("Content-Type", "application/octet-stream");
+
+  xhr.upload.onprogress = (ev) => {
+    if (!ev.lengthComputable) return;
+    const pct = (ev.loaded / ev.total) * 100;
+    setOtaProgress(pct,
+      `Uploading ${ev.loaded.toLocaleString()} / ${ev.total.toLocaleString()} B`);
+  };
+  xhr.onload = () => {
+    let body;
+    try { body = JSON.parse(xhr.responseText); } catch { body = {}; }
+    if (xhr.status === 200 && body.ok) {
+      setOtaProgress(100,
+        `OK — staged ${body.size?.toLocaleString()} B on ${body.partition} (v${body.version})`);
+      setOtaStatus(
+        `OK — staged v${body.version} on ${body.partition}. Rebooting…`,
+        "ok");
+      toast("Firmware flashed — dongle is rebooting");
+      // Give the dongle enough time to reboot + come back up before
+      // refreshing. Wi-Fi reconnect typically lands within 6-8 s.
+      setTimeout(() => location.reload(), 8000);
+    } else {
+      const err = body.error || `HTTP ${xhr.status}`;
+      setOtaStatus(`Failed: ${err}`, "err");
+      toast("OTA failed: " + err, "err");
+      setOtaBusy(false);
+    }
+  };
+  xhr.onerror = () => {
+    setOtaStatus("Network error — connection dropped during upload", "err");
+    toast("OTA network error", "err");
+    setOtaBusy(false);
+  };
+  xhr.send(file);
+};
 
 refresh();
 </script>

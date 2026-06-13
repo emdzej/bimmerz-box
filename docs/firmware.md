@@ -191,18 +191,25 @@ Single TCP listener on port 80. Routes:
 
 | Method | Path | Handler |
 |---|---|---|
-| GET | `/` | 302 to `/inpax/` (configurable default app) |
-| GET | `/<app>/` | serve `/sdcard/web/<app>/index.html` |
-| GET | `/<app>/assets/<file>` | serve from `/sdcard/web/<app>/assets/`, with `Cache-Control: public, max-age=31536000, immutable` |
+| GET | `/` | serves dashboard from `/sdcard/sys/dashboard/index.html` |
+| GET | `/<app>/` | serve `/sdcard/apps/<app>/index.html` |
+| GET | `/<app>/assets/<file>` | serve from `/sdcard/apps/<app>/assets/`, with `Cache-Control: public, max-age=31536000, immutable` |
 | GET | `/<app>/<anything-else>` | fallback to `index.html` (SPA hash-routing) |
 | GET | `/data/<path>` | serve from `/sdcard/data/<path>` — SGBD, DATEN, and other vehicle data files. Read-only. Supports range requests for large files. Path traversal blocked. |
+| GET | `/settings/` | in-flash settings UI (HTML, embedded) |
+| GET | `/settings/fflate.min.js` | embedded zip lib used by *Upload & extract zip* |
+| POST | `/settings/ota/firmware` | streaming P4 firmware upload — see §11.1 |
 | GET | `/api/info` | dongle metadata (firmware version, chip ID, uptime) |
-| POST | `/admin/ota/firmware` | multipart upload of P4 firmware |
-| POST | `/admin/ota/c6` | multipart upload of C6 firmware |
-| POST | `/admin/ota/assets` | multipart upload of asset bundle (signed) |
-| GET | `/admin/config` | current config JSON |
-| POST | `/admin/config` | partial config update |
+| GET, POST | `/api/config` | NVS-backed configuration snapshot / partial update |
+| POST | `/api/restart` | `esp_restart()` |
+| POST | `/api/factory-reset` | `nvs_flash_erase()` then restart |
+| GET, DELETE | `/api/files` | list / recursive-delete SD card paths |
+| GET | `/api/files/raw` | download a single file (range requests OK) |
+| POST | `/api/files/upload` | upload a single file (`?path=<absolute>`) |
+| POST | `/api/files/mkdir` | create directory |
 | **WS** | `/rpc/ediabasx` | JSON-RPC 2.0 over WebSocket — replaces port 6802. All RPC endpoints live under the `/rpc/` prefix (out of the `/<app>/` static-app namespace) so future siblings (`/rpc/j2534`, `/rpc/nfsx`, …) drop in without conflicting with web app routing. |
+| **WS** | `/rpc/uart/<idx>` | raw UART bridge (idx 0..N) |
+| **WS** | `/rpc/can/<idx>` | TWAI/CAN bridge (idx 0..1) |
 
 Gzip-precompressed assets (`*.gz`) are served when the client sends
 `Accept-Encoding: gzip`. Vite's build pipeline already produces these.
@@ -417,61 +424,71 @@ init phase of legacy K-line dialogue.
 
 ## 11. OTA
 
-### 11.1 P4 firmware
+### 11.1 P4 firmware (implemented)
 
-- ESP-IDF `esp_https_ota` API (against local upload, not a remote URL).
-- Upload via `POST /admin/ota/firmware` with the new `.bin` as multipart.
-- Writes to the inactive OTA slot, validates checksum, sets `otadata`,
-  reboots.
-- On boot, if app fails to call `esp_ota_mark_app_valid_cancel_rollback()`
-  within 60 s of successful start, the bootloader rolls back to the
-  previous slot on next reset.
+- **Endpoint:** `POST /settings/ota/firmware`, `Content-Type: application/octet-stream`,
+  body is the raw `.bin` straight from `firmware/build/bimmerz_box.bin`.
+- **Flow:** stream into the inactive OTA slot via `esp_ota_begin /
+  esp_ota_write / esp_ota_end`. First chunk is validated against
+  `ESP_APP_DESC_MAGIC_WORD` so a wrong file fails fast before any flash
+  writes. On success, `esp_ota_set_boot_partition()` flips otadata and
+  the dongle reboots ~500 ms after the JSON response flushes.
+- **Rollback (armed by `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`):** a
+  freshly-installed image boots in state `ESP_OTA_IMG_PENDING_VERIFY`.
+  `ota_manager_init()` schedules a 60 s `esp_timer` that calls
+  `esp_ota_mark_app_valid_cancel_rollback()` once the device has been
+  up that long. Any panic / watchdog reset inside the 60 s window
+  causes the bootloader to revert to the previous slot on next boot —
+  so a brick from a bad upload is recoverable without USB-JTAG.
+- **Response shape:** `{ok:true, version, partition, size, restart_ms}`
+  on success, `{ok:false, error}` on failure (HTTP 400/413/500).
+- **UI:** `/settings/` has a *Firmware update* section with a file
+  picker + progress bar. Upload uses XHR (so the bar reflects actual
+  bytes-on-wire, not a fetch black box).
 
-### 11.2 C6 radio firmware
+### 11.2 Security gaps (known, not yet addressed)
 
-- C6 firmware blob lives in the `c6_fw` partition.
-- `c6_host` component owns the ESP-Hosted master and the C6 bootloader
-  protocol over SDIO.
-- Upload via `POST /admin/ota/c6`. The handler streams the image into
-  `c6_fw` then triggers a C6 reflash + restart of the ESP-Hosted link.
+These are deferred to a later iteration. Documented so callers know.
+
+- **No authentication on `/settings/*` or `/api/*`.** Anyone on the
+  dongle's AP can flash firmware, wipe NVS, or read/write the SD card.
+  Treat AP-Wi-Fi access as physical access until a credential gate is
+  added (likely shared-secret challenge + per-session cookie).
+- **No image signature verification.** `esp_ota_write` validates the
+  ESP image checksum but does not verify cryptographic provenance. A
+  LAN attacker (or anyone who reached the AP credentials) can flash an
+  arbitrary image. Mitigation path: enable
+  `CONFIG_SECURE_BOOT_V2_ENABLED` + `CONFIG_SECURE_SIGNED_APPS_*` so
+  the bootloader rejects unsigned images. Pre-condition: settle on a
+  signing key escrow story first.
+
+### 11.3 C6 radio firmware (not yet implemented)
+
+Planned, not built:
+
+- C6 firmware blob to live in the `c6_fw` partition (1 MB slot at
+  `0xe20000`).
+- `c6_host` component would own the ESP-Hosted master and the C6
+  bootloader protocol over SDIO.
+- Upload path TBD (likely `POST /settings/ota/c6`) — handler would
+  stream the image into `c6_fw` then trigger a C6 reflash via the
+  ESP-Hosted slave's update protocol.
 - Rare path — C6 firmware updates ride along with major P4 releases.
 
-### 11.3 Asset OTA (Wi-Fi path)
+### 11.4 Asset OTA (not yet implemented — covered ad-hoc by SD writes)
 
-- Asset bundle is a signed tarball:
-  ```
-  bundle.tar
-  ├── manifest.json    # {version, files:[{path, sha256, size}]}
-  ├── manifest.sig     # ECDSA-P256 signature of manifest.json
-  └── files/
-      └── web/...
-  ```
-- Upload via `POST /admin/ota/assets`.
-- Manager flow:
-  1. Stream tarball into `/sdcard/staging/incoming.tar`.
-  2. Verify `manifest.sig` against the public key in `/sdcard/config/ota-trust.pem`.
-  3. Extract into `/sdcard/staging/files/`.
-  4. Verify each file's SHA-256 matches the manifest.
-  5. Atomic swap: rename `/sdcard/web/` → `/sdcard/web.old/`, rename
-     `/sdcard/staging/files/web/` → `/sdcard/web/`.
-  6. On next boot, purge `/sdcard/web.old/`.
-- The HTTP server detects file changes by inode/mtime and serves new
-  content without a restart. PWA service workers in each SPA pick up
-  hashed-asset changes automatically.
+Today, app/SGBD bundles are pushed via the `/api/files/upload`
+endpoint (per-file) or the *Upload & extract zip* button in
+`/settings/` (browser-side unzip via embedded fflate). Neither is
+atomic or signature-checked. A proper asset OTA channel is sketched
+below for future implementation:
 
-### 11.4 Asset OTA (USB-MSC path)
-
-- `usb_msc/` component exposes the SD card as a USB Mass Storage class
-  device over the P4's USB OTG HS.
-- Activated by a long-press on the multifunction button while the
-  dongle is plugged into USB-C.
-- The host PC mounts the SD card. The user drops a new bundle into
-  `/staging/` and triggers re-validation via a marker file (e.g.,
-  `STAGE_READY`).
-- On unmount, the dongle reboots into the same validate-and-swap flow
-  as the Wi-Fi path.
-- This is the offline / no-Wi-Fi fallback for users who don't want to
-  upload over the dongle's AP.
+- Signed tarball: manifest + ECDSA-P256 signature + files tree.
+- Server-side flow: verify against `/sdcard/config/ota-trust.pem`,
+  extract to `/sdcard/staging/`, atomic rename swap, purge old tree
+  on next boot.
+- USB-MSC drop-in remains the offline fallback for users without
+  Wi-Fi access.
 
 ## 12. Configuration (NVS)
 

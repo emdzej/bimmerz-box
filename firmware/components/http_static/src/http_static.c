@@ -382,10 +382,11 @@ esp_err_t http_static_start(void) {
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.uri_match_fn = httpd_uri_match_wildcard;
     cfg.lru_purge_enable = true;
-    // Counted live: 13 (admin_ui — /settings/* + /api/*) + 1 (jsonrpc)
-    // + 1 (rpc_uart) + 1 (rpc_can) + 1 (captive accept POST) + 2
-    // (wildcard GET+HEAD) = 19 today. 24 leaves room for the next two
-    // endpoints without another silent boot-loop. ESP_ERROR_CHECK on
+    // Counted live: 13 (admin_ui — /settings/* + /api/*) + 1
+    // (ota_manager — /settings/ota/firmware) + 1 (jsonrpc) + 1
+    // (rpc_uart) + 1 (rpc_can) + 1 (captive accept POST) + 2 (wildcard
+    // GET+HEAD) = 20 today. 24 leaves room for the next four endpoints
+    // without another silent boot-loop. ESP_ERROR_CHECK on
     // http_static_install_fallback() panics if this is too low.
     cfg.max_uri_handlers = 24;
     cfg.stack_size = 8192;
