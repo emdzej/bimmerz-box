@@ -30,11 +30,12 @@ on:
         default: ""
 
 env:
-  # Sibling-repo pin. Bump to a tag once ediabasx-embedded cuts one;
-  # `main` for now (early development, no releases yet). The
-  # workflow_dispatch input above lets you override per-run without
-  # editing this file.
-  EDIABASX_EMBEDDED_DEFAULT_REF: main
+  # Sibling-repo pin. Bare semver — no `v` prefix, matches the tag
+  # convention in ediabasx-embedded/CHANGELOG.md. Bump alongside any
+  # ediabasx-embedded release. The workflow_dispatch input above lets
+  # you override per-run without editing this file (e.g. to verify a
+  # branch before tagging).
+  EDIABASX_EMBEDDED_DEFAULT_REF: "0.1.0"
 
 jobs:
   build:
