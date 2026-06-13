@@ -1,0 +1,154 @@
+name: Build firmware
+
+# Compiles the P4 firmware for every board variant on every push / PR
+# that touches `firmware/`. Uploads each variant's bins as workflow
+# artefacts. On a GitHub Release (published), the same bins get
+# attached to the release so a download is a single click.
+#
+# Firmware version stamping happens automatically via `git describe`
+# inside ESP-IDF — that's why `fetch-depth: 0` matters on the
+# checkout. On main commits the version is the short sha + "-dirty"
+# (or clean, in CI). On a tag like v0.2.0 it becomes "v0.2.0".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ediabasx_embedded_ref:
+        description: "ediabasx-embedded ref to build against (overrides default)"
+        required: false
+        default: ""
+
+env:
+  # Sibling-repo pin. Bump to a tag once ediabasx-embedded cuts one;
+  # `main` for now (early development, no releases yet). The
+  # workflow_dispatch input above lets you override per-run without
+  # editing this file.
+  EDIABASX_EMBEDDED_DEFAULT_REF: main
+
+jobs:
+  build:
+    name: Build (${{ matrix.board }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board: [waveshare, dongle]
+    steps:
+      - name: Checkout bimmerz-box
+        uses: actions/checkout@v4
+        with:
+          path: bimmerz-box
+          # ESP-IDF stamps `esp_app_desc_t::version` from `git describe`.
+          # Without full history (tags + commits), it falls back to
+          # "unknown" instead of the commit sha.
+          fetch-depth: 0
+
+      - name: Checkout sibling ediabasx-embedded
+        # firmware/components/ediabasx_platform/idf_component.yml has a
+        # path dep `../../../../ediabasx-embedded`. From the deep
+        # component path that resolves to $GITHUB_WORKSPACE, so the
+        # sibling repo has to land right next to bimmerz-box.
+        # If either checkout moves, the relative path in
+        # ediabasx_platform's idf_component.yml has to follow.
+        uses: actions/checkout@v4
+        with:
+          repository: emdzej/ediabasx-embedded
+          ref: ${{ inputs.ediabasx_embedded_ref || env.EDIABASX_EMBEDDED_DEFAULT_REF }}
+          path: ediabasx-embedded
+
+      - name: Build (ESP-IDF v5.4.4, esp32p4, board=${{ matrix.board }})
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.4.4
+          target: esp32p4
+          path: bimmerz-box/firmware
+          # Layer board-specific defaults over the common ones. CMake
+          # picks up -D SDKCONFIG_DEFAULTS at configure time; the
+          # semicolon-separated list is read left-to-right (later wins).
+          command: idf.py -DSDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.${{ matrix.board }}' build
+
+      - name: Stage artefacts with board-tagged names
+        id: stage
+        run: |
+          set -euo pipefail
+          STAGE="$GITHUB_WORKSPACE/artefacts"
+          mkdir -p "$STAGE"
+          B="${{ matrix.board }}"
+          SRC=bimmerz-box/firmware/build
+          # IDF stamps the version inside the binary via git describe;
+          # we derive the same value here just to label artefacts and
+          # the release attachments. On a tagged commit GITHUB_REF_NAME
+          # is the tag (e.g. `v0.2.0`); otherwise we use the short sha.
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="${GITHUB_SHA:0:7}"
+          fi
+          cp "$SRC/bimmerz_box.bin"                       "$STAGE/bimmerz_box-$B-$VERSION.bin"
+          cp "$SRC/bootloader/bootloader.bin"             "$STAGE/bootloader-$B-$VERSION.bin"
+          cp "$SRC/partition_table/partition-table.bin"   "$STAGE/partition-table-$B-$VERSION.bin"
+          cp "$SRC/ota_data_initial.bin"                  "$STAGE/ota_data_initial-$B-$VERSION.bin"
+          cp "$SRC/flasher_args.json"                     "$STAGE/flasher_args-$B-$VERSION.json"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          ls -l "$STAGE"
+
+      - name: Summarise
+        run: |
+          {
+            echo "### Firmware build — ${{ matrix.board }}"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Version | \`${{ steps.stage.outputs.version }}\` |"
+            echo "| ediabasx-embedded ref | \`${{ inputs.ediabasx_embedded_ref || env.EDIABASX_EMBEDDED_DEFAULT_REF }}\` |"
+            for f in artefacts/*-${{ matrix.board }}-${{ steps.stage.outputs.version }}.*; do
+              SIZE=$(numfmt --to=iec --suffix=B --format="%.1f" "$(stat -c%s "$f")")
+              echo "| \`$(basename "$f")\` | $SIZE |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload workflow artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bimmerz-box-firmware-${{ matrix.board }}
+          path: artefacts/*-${{ matrix.board }}-${{ steps.stage.outputs.version }}.*
+          retention-days: 30
+          if-no-files-found: error
+
+  release:
+    name: Attach firmware to release
+    # Only runs when this workflow is triggered by a release being
+    # published. The build matrix has finished by the time we get here,
+    # so download-artifact can pull both boards' bins.
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all firmware artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artefacts
+          pattern: bimmerz-box-firmware-*
+          merge-multiple: true
+
+      - name: List downloaded artefacts
+        run: ls -lh artefacts/
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artefacts/*
+          fail_on_unmatched_files: true
