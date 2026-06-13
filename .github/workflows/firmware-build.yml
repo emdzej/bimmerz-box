@@ -68,16 +68,30 @@ jobs:
           ref: ${{ inputs.ediabasx_embedded_ref || env.EDIABASX_EMBEDDED_DEFAULT_REF }}
           path: ediabasx-embedded
 
+      - name: Merge board-specific sdkconfig defaults
+        # Going through `-DSDKCONFIG_DEFAULTS='a;b'` doesn't survive
+        # the action's shell layer — the semicolon ends up unquoted
+        # and bash treats it as a command separator. Instead, append
+        # the board overlay onto `sdkconfig.defaults` itself; IDF
+        # already picks that file up automatically, no flags needed.
+        # Last-write-wins inside one file matches the semantics of
+        # the semicolon-separated form for our case.
+        run: |
+          set -euo pipefail
+          cd bimmerz-box/firmware
+          {
+            echo ""
+            echo "# --- merged from sdkconfig.defaults.${{ matrix.board }} by CI ---"
+            cat sdkconfig.defaults.${{ matrix.board }}
+          } >> sdkconfig.defaults
+          tail -20 sdkconfig.defaults
+
       - name: Build (ESP-IDF v5.4.4, esp32p4, board=${{ matrix.board }})
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.4.4
           target: esp32p4
           path: bimmerz-box/firmware
-          # Layer board-specific defaults over the common ones. CMake
-          # picks up -D SDKCONFIG_DEFAULTS at configure time; the
-          # semicolon-separated list is read left-to-right (later wins).
-          command: idf.py -DSDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.${{ matrix.board }}' build
 
       - name: Stage artefacts with board-tagged names
         id: stage
