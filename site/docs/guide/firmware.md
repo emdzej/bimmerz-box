@@ -15,7 +15,7 @@ previously-running slot automatically.
 
 ### Pushing an OTA build
 
-The dongle's `/admin/` page has an **OTA upload** form. Drop a built
+The dongle's `/settings/` page has an **OTA upload** form. Drop a built
 `bimmerz_box.bin` file, wait for the upload to finish (a few seconds
 over the AP), the dongle reboots into the new image.
 

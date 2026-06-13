@@ -2,7 +2,8 @@
 
 // In-flash configuration web app. Always available — survives a missing
 // or corrupt SD card. Registers:
-//   GET  /admin/           — single-page HTML config UI (EMBED_FILES)
+//   GET  /settings/        — single-page HTML config UI (EMBED_FILES)
+//   GET  /settings/fflate.min.js — embedded zip lib (cached)
 //   GET  /api/info         — firmware version, chip ID, uptime, free heap
 //   GET  /api/config       — current NVS-backed config snapshot
 //   POST /api/config       — update config (partial JSON merged into NVS)

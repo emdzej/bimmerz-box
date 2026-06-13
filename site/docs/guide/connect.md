@@ -13,7 +13,7 @@ desktop with a USB Wi-Fi dongle.
 | IP       | `172.16.7.1`  |
 | Channel  | 6 (2.4 GHz)   |
 
-Change them in [`/admin/`](#changing-the-wi-fi-credentials) — strongly
+Change them in [`/settings/`](#changing-the-wi-fi-credentials) — strongly
 recommended once you've confirmed the dongle works.
 
 ## The captive portal
@@ -100,7 +100,7 @@ pin 4 (or pin 5).
 
 ## Changing the Wi-Fi credentials
 
-1. Connect, open `http://172.16.7.1/admin/`.
+1. Connect, open `http://172.16.7.1/settings/`.
 2. Under **Wi-Fi**, edit SSID / password / channel.
 3. Click **Save**, then **Restart**.
 4. Reconnect with the new credentials.

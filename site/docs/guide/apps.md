@@ -25,7 +25,7 @@ Workflow:
    bytecode, and the result sets appear.
 
 You need the **BMW DATEN-disk** SGBD files for your chassis under
-`/sdcard/data/ediabas/ecu/`. Upload them via `/admin/` or write them
+`/sdcard/data/ediabas/ecu/`. Upload them via `/settings/` or write them
 directly via USB-MSC (see [Firmware updates](./firmware)).
 
 ## INPAX — live values
@@ -96,7 +96,7 @@ Two ways to get BMW data onto the dongle's SD card:
 
 ### Via the admin web UI
 
-`/admin/` has a file browser. Click into `/sdcard/data/ediabas/ecu/`,
+`/settings/` has a file browser. Click into `/sdcard/data/ediabas/ecu/`,
 hit **Upload**, drop your `.prg` / `.grp` files. Good for a handful
 of files.
 

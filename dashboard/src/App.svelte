@@ -1,59 +1,30 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { applyTheme, loadTheme, persistTheme, type Theme } from './theme.js'
-  import { apps, type AppTile } from './tiles.js'
+  import { discoverApps, splitAppName, type AppTile } from './tiles.js'
 
   let theme = $state<Theme>(loadTheme())
 
   /**
-   * Per-tile presence: have we confirmed `/sdcard/web/<app>/` exists on
-   * the dongle? Three states:
-   *   - `undefined` — still probing or API unreachable (renders normally)
-   *   - `false`     — confirmed missing (renders dimmed, click disabled)
-   *   - `true`      — confirmed present
-   *
-   * We can't disambiguate via HEAD on `/<app>/index.html` because the
-   * dongle's SPA fallback for unknown paths serves the dashboard's own
-   * index.html (HTTP 200, wrong body). One authoritative call to the
-   * admin file API is cleaner.
+   * Auto-discovered app catalogue. Empty until `discoverApps` resolves
+   * — the grid is empty during the initial fetch, which on the AP is
+   * a sub-100 ms blip. No "not installed" tiles any more: if the
+   * folder isn't on the SD, the tile simply doesn't render.
    */
-  let present = $state<Record<string, boolean | undefined>>({})
+  let tiles = $state<AppTile[]>([])
 
   onMount(() => {
-    probeInstalledApps()
+    void load()
   })
 
-  async function probeInstalledApps(): Promise<void> {
-    try {
-      const r = await fetch('/api/files?path=/sdcard/web')
-      if (!r.ok) return  // leave `present` undefined → tiles render normally
-      const data = (await r.json()) as {
-        entries?: Array<{ name: string; type: 'file' | 'dir' }>
-      }
-      const installed = new Set(
-        (data.entries ?? [])
-          .filter((e) => e.type === 'dir')
-          .map((e) => e.name),
-      )
-      for (const tile of apps) {
-        // href is "/ediabasx/" → segment "ediabasx"
-        const seg = tile.href.replace(/^\/|\/$/g, '')
-        present[tile.name] = installed.has(seg)
-      }
-    } catch {
-      // API not reachable (dev mode, network blip) — leave undefined
-    }
+  async function load(): Promise<void> {
+    tiles = await discoverApps()
   }
 
   function toggleTheme(): void {
     theme = theme === 'light' ? 'dark' : 'light'
     applyTheme(theme)
     persistTheme(theme)
-  }
-
-  function splitAppName(name: string): { stem: string; x: string } {
-    if (name.endsWith('X')) return { stem: name.slice(0, -1), x: 'X' }
-    return { stem: name, x: '' }
   }
 </script>
 
@@ -103,9 +74,9 @@
 
     <a
       class="icon-btn"
-      href="/admin/"
-      aria-label="Open admin settings"
-      title="Settings (admin)"
+      href="/settings/"
+      aria-label="Open settings"
+      title="Settings"
     >
       <!-- gear icon -->
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -122,27 +93,15 @@
 
 <main>
   <ul class="tiles">
-    {#each apps as tile (tile.href)}
-      {@const parts = splitAppName(tile.name)}
-      {@const isPresent = present[tile.name]}
-      {@const disabled = isPresent === false}
-      <li class="tile" class:tile--disabled={disabled}>
-        {#if disabled}
-          <div class="tile__inner" aria-disabled="true">
-            <span class="tile__name">
-              <span>{parts.stem}</span><span class="tile__name-accent">{parts.x}</span>
-            </span>
-            <span class="tile__blurb">{tile.blurb}</span>
-            <span class="tile__badge">not installed</span>
-          </div>
-        {:else}
-          <a class="tile__inner" href={tile.href}>
-            <span class="tile__name">
-              <span>{parts.stem}</span><span class="tile__name-accent">{parts.x}</span>
-            </span>
-            <span class="tile__blurb">{tile.blurb}</span>
-          </a>
-        {/if}
+    {#each tiles as tile (tile.slug)}
+      {@const parts = splitAppName(tile.name, tile.manifest.accent)}
+      <li class="tile">
+        <a class="tile__inner" href={tile.href}>
+          <span class="tile__name">
+            <span>{parts.stem}</span><span class="tile__name-accent">{parts.accent}</span>
+          </span>
+          <span class="tile__blurb">{tile.description}</span>
+        </a>
       </li>
     {/each}
   </ul>

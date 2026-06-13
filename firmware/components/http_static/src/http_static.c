@@ -17,9 +17,10 @@
 
 static const char *TAG = "http_static";
 
-#define WEB_ROOT       "/sdcard/web"
+#define APPS_ROOT      "/sdcard/apps"
+#define SYS_ROOT       "/sdcard/sys"
 #define DATA_ROOT      "/sdcard/data"
-#define HUB_APP        "dashboard"        // served at "/"; everything else is /<app>/
+#define HUB_APP        "dashboard"        // lives under SYS_ROOT, served at "/"
 #define AP_IP_STRING   "172.16.7.1" // must track wifi_ap.c AP_IP
 #define FILE_CHUNK     4096
 
@@ -259,27 +260,28 @@ static esp_err_t handle_data(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// Returns true if `seg` is a real subdirectory under /sdcard/web/ that
-// isn't the hub itself. Used to distinguish /<app>/* from hub-internal
-// SPA routes.
+// Returns true if `seg` is a real subdirectory under /sdcard/apps/.
+// User apps live there (auto-discovered by the dashboard via
+// /api/files?path=/sdcard/apps). The hub itself lives in /sdcard/sys/
+// and is served at "/" by handle_hub.
 static bool is_app_dir(const char *seg) {
-    if (strcmp(seg, HUB_APP) == 0) return false;  // hub serves at "/", not under "/" (dashboard at root)
     char path[256];
-    int n = snprintf(path, sizeof(path), "%s/%s", WEB_ROOT, seg);
+    int n = snprintf(path, sizeof(path), "%s/%s", APPS_ROOT, seg);
     if (n <= 0 || (size_t)n >= sizeof(path)) return false;
     struct stat st;
     return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-// /<app>/* — serves the literal file if it exists, otherwise falls back
-// to /<app>/index.html so the SPA's hash-routing works.
+// /<app>/* — serves the literal file from /sdcard/apps/<app>/ if it
+// exists, otherwise falls back to /sdcard/apps/<app>/index.html so the
+// SPA's hash-routing works.
 static esp_err_t handle_app(httpd_req_t *req) {
     char app[64];
     if (!first_segment(req->uri, app, sizeof(app))) {
         return httpd_resp_send_404(req);
     }
     char fs_path[256];
-    int n = snprintf(fs_path, sizeof(fs_path), "%s%s", WEB_ROOT, req->uri);
+    int n = snprintf(fs_path, sizeof(fs_path), "%s%s", APPS_ROOT, req->uri);
     if (n <= 0 || (size_t)n >= sizeof(fs_path)) {
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "uri too long");
     }
@@ -291,7 +293,7 @@ static esp_err_t handle_app(httpd_req_t *req) {
 
     char index_path[256];
     n = snprintf(index_path, sizeof(index_path), "%s/%s/index.html",
-                 WEB_ROOT, app);
+                 APPS_ROOT, app);
     if (n <= 0 || (size_t)n >= sizeof(index_path)) {
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "uri too long");
     }
@@ -302,17 +304,17 @@ static esp_err_t handle_app(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// Hub handler — serves the root namespace from /sdcard/web/dashboard/.
-//   "/"          → /sdcard/web/dashboard/index.html
-//   "/foo.js"    → /sdcard/web/dashboard/foo.js (literal)
-//   "/<other>"   → /sdcard/web/dashboard/index.html (SPA fallback)
+// Hub handler — serves the root namespace from /sdcard/sys/dashboard/.
+//   "/"          → /sdcard/sys/dashboard/index.html
+//   "/foo.js"    → /sdcard/sys/dashboard/foo.js (literal)
+//   "/<other>"   → /sdcard/sys/dashboard/index.html (SPA fallback)
 static esp_err_t handle_hub(httpd_req_t *req) {
     char fs_path[256];
     int n;
     if (strcmp(req->uri, "/") == 0) {
-        n = snprintf(fs_path, sizeof(fs_path), "%s/%s/index.html", WEB_ROOT, HUB_APP);
+        n = snprintf(fs_path, sizeof(fs_path), "%s/%s/index.html", SYS_ROOT, HUB_APP);
     } else {
-        n = snprintf(fs_path, sizeof(fs_path), "%s/%s%s", WEB_ROOT, HUB_APP, req->uri);
+        n = snprintf(fs_path, sizeof(fs_path), "%s/%s%s", SYS_ROOT, HUB_APP, req->uri);
     }
     if (n <= 0 || (size_t)n >= sizeof(fs_path)) {
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "uri too long");
@@ -326,7 +328,7 @@ static esp_err_t handle_hub(httpd_req_t *req) {
     // SPA fallback to hub's index.html
     char index_path[256];
     n = snprintf(index_path, sizeof(index_path), "%s/%s/index.html",
-                 WEB_ROOT, HUB_APP);
+                 SYS_ROOT, HUB_APP);
     if (n <= 0 || (size_t)n >= sizeof(index_path)) {
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "uri too long");
     }
@@ -380,10 +382,10 @@ esp_err_t http_static_start(void) {
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.uri_match_fn = httpd_uri_match_wildcard;
     cfg.lru_purge_enable = true;
-    // Counted live: 12 (admin_ui) + 1 (jsonrpc) + 1 (rpc_uart) +
-    // 1 (rpc_can) + 1 (captive accept POST) + 2 (wildcard GET+HEAD)
-    // = 18 today. 24 leaves room for the next two endpoints without
-    // another silent boot-loop. ESP_ERROR_CHECK on
+    // Counted live: 13 (admin_ui — /settings/* + /api/*) + 1 (jsonrpc)
+    // + 1 (rpc_uart) + 1 (rpc_can) + 1 (captive accept POST) + 2
+    // (wildcard GET+HEAD) = 19 today. 24 leaves room for the next two
+    // endpoints without another silent boot-loop. ESP_ERROR_CHECK on
     // http_static_install_fallback() panics if this is too low.
     cfg.max_uri_handlers = 24;
     cfg.stack_size = 8192;
@@ -414,8 +416,8 @@ esp_err_t http_static_start(void) {
         return err;
     }
 
-    ESP_LOGI(TAG, "HTTP server up on port %d (web=%s, data=%s)",
-             cfg.server_port, WEB_ROOT, DATA_ROOT);
+    ESP_LOGI(TAG, "HTTP server up on port %d (apps=%s, sys=%s, data=%s)",
+             cfg.server_port, APPS_ROOT, SYS_ROOT, DATA_ROOT);
     return ESP_OK;
 }
 

@@ -33,7 +33,7 @@ construction differs.
   `BOARD_VARIANT=dongle` on the PCB path. Both flash the same way.
 - **Web apps** — same SD-card layout under `/sdcard/web/<app>/`
   and `/sdcard/data/<app>/`.
-- **OTA + updates** — same `/admin/` upload form, same USB-MSC SD
+- **OTA + updates** — same `/settings/` upload form, same USB-MSC SD
   drop-in mechanism.
 
 ## Or, skip DIY

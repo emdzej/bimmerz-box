@@ -78,7 +78,7 @@ disconnected" indicator.
 - The HTTP server is up (dashboard renders) but the WebSocket
   upgrade failed. Refresh the page — most browsers retry the
   upgrade on reload.
-- If a refresh doesn't fix it: visit `/admin/` → **Restart**.
+- If a refresh doesn't fix it: visit `/settings/` → **Restart**.
   Common cause is the dongle's heap fragmenting after a long
   uptime; a restart clears it.
 

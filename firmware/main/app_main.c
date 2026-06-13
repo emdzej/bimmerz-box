@@ -63,7 +63,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(ediabasx_platform_init());
 
     // Stage 9: HTTP + WS surface. Register specific routes (jsonrpc /rpc,
-    // admin /admin/+/api/*) BEFORE installing http_static's wildcard /*
+    // settings /settings/+/api/*) BEFORE installing http_static's wildcard /*
     // fallback — esp_http_server's wildcard matcher returns the first
     // registered match.
     ESP_ERROR_CHECK(http_static_start());

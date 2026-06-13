@@ -28,7 +28,7 @@ On your phone, tablet, or laptop:
 
 - **SSID:** `BimmerzBox`
 - **Password:** `bimmerzbox` *(change it after first connect — see
-  [`/admin/`](#) below)*
+  [`/settings/`](#) below)*
 
 The dongle is an **AP-only** device. It doesn't connect to your home
 Wi-Fi or share internet. Your device temporarily drops off its usual

@@ -13,7 +13,7 @@ own Wi-Fi AP. That server serves four kinds of thing:
 2. **The web apps** at `/<app>/` — each app is a single-page
    application stored on the SD card under `/sdcard/web/<app>/`.
    Today: `ediabasx`, `inpax`, `ncsx`, `nfsx`, `tunex`.
-3. **The admin page** at `/admin/` — system settings + an SD-card
+3. **The admin page** at `/settings/` — system settings + an SD-card
    file browser for uploading SGBDs, web apps, and DATEN-disk files.
 4. **The RPC endpoints** at `/rpc/...` — WebSocket APIs that the web
    apps use to drive the dongle's diagnostic engines. You won't
@@ -32,11 +32,11 @@ BEST2 SGBD bytecode, framing DS2 / KWP2000 telegrams, decoding CAN.
 | `/ncsx/`             | NCSX — coding                                   |
 | `/nfsx/`             | NFSX — flashing                                 |
 | `/tunex/`            | TUNEX — image editing                           |
-| `/admin/`            | System settings + SD-card file browser          |
+| `/settings/`            | System settings + SD-card file browser          |
 | `/data/...`          | Read-only access to `/sdcard/data/` (SGBDs etc) |
 
 The default Wi-Fi credentials (`BimmerzBox` / `bimmerzbox`) and the
-admin password can all be changed in `/admin/`. See
+admin password can all be changed in `/settings/`. See
 [Connect a device](./connect) for the full setup walkthrough.
 
 ## Topics

@@ -40,9 +40,15 @@ static const char *TAG = "admin_ui";
 #define FS_QUERY_MAX      512
 #define FS_UPLOAD_CHUNK   4096
 
-// EMBED_FILES symbols for web/admin.html ------------------------------------
-extern const uint8_t admin_html_start[] asm("_binary_admin_html_start");
-extern const uint8_t admin_html_end[]   asm("_binary_admin_html_end");
+// EMBED_FILES symbols for web/settings.html ---------------------------------
+extern const uint8_t settings_html_start[] asm("_binary_settings_html_start");
+extern const uint8_t settings_html_end[]   asm("_binary_settings_html_end");
+
+// fflate.min.js (UMD build, ~32 KB) — loaded by settings.html to do
+// client-side zip extraction. Embedded so the dongle stays self-
+// sufficient with no CDN dependency at AP-only sites.
+extern const uint8_t fflate_min_js_start[] asm("_binary_fflate_min_js_start");
+extern const uint8_t fflate_min_js_end[]   asm("_binary_fflate_min_js_end");
 
 // ---- string NVS helpers ---------------------------------------------------
 static esp_err_t nvs_get_str_default(nvs_handle_t h, const char *key,
@@ -83,11 +89,21 @@ static void make_default_ssid(char *out, size_t out_len) {
 
 // ---- handlers -------------------------------------------------------------
 
-static esp_err_t handle_admin_root(httpd_req_t *req) {
+static esp_err_t handle_settings_root(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
-    return httpd_resp_send(req, (const char *)admin_html_start,
-                           admin_html_end - admin_html_start);
+    return httpd_resp_send(req, (const char *)settings_html_start,
+                           settings_html_end - settings_html_start);
+}
+
+// GET /settings/fflate.min.js — embedded zip library used by the
+// settings page's "Upload & extract zip" button. Cached aggressively
+// (it's pinned to the firmware build).
+static esp_err_t handle_settings_fflate(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/javascript; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=604800, immutable");
+    return httpd_resp_send(req, (const char *)fflate_min_js_start,
+                           fflate_min_js_end - fflate_min_js_start);
 }
 
 static esp_err_t handle_api_info(httpd_req_t *req) {
@@ -444,8 +460,40 @@ static esp_err_t handle_api_files_mkdir(httpd_req_t *req) {
     return httpd_resp_send(req, "{\"ok\":true}", 11);
 }
 
+// Depth-first recursive delete. Returns 0 on full success, -1 if any
+// child failed to remove (errno from the failing op). The path safety
+// guards in get_path_arg already ensure we can't recurse outside
+// /sdcard/, so there's no traversal risk here — but we do trust the
+// caller for "I really meant to delete this", which on a top-level
+// folder like /sdcard/data could nuke a few hundred MB of SGBDs.
+static int rmtree(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+    if (!S_ISDIR(st.st_mode)) return unlink(path);
+
+    DIR *d = opendir(path);
+    if (!d) return -1;
+    struct dirent *e;
+    int rc = 0;
+    while ((e = readdir(d)) != NULL) {
+        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) continue;
+        char child[FS_PATH_MAX + 256];
+        int n = snprintf(child, sizeof(child), "%s/%s", path, e->d_name);
+        if (n <= 0 || (size_t)n >= sizeof(child)) { rc = -1; break; }
+        if (rmtree(child) != 0) { rc = -1; break; }
+    }
+    closedir(d);
+    if (rc != 0) return -1;
+    return rmdir(path);
+}
+
 // DELETE /api/files?path=...   (also accepts POST /api/files/delete for
-// browsers that prefer to avoid the DELETE verb)
+// browsers that prefer to avoid the DELETE verb).
+// Directories are removed recursively (depth-first); a flat rmdir
+// can't get rid of Windows' auto-created `System Volume Information`,
+// SD-card recycle bins, or any partially-populated app folder, and
+// requiring the caller to walk + delete piece by piece over HTTP is a
+// lot of round trips for what's already a power-user operation.
 static esp_err_t handle_api_files_delete(httpd_req_t *req) {
     char path[FS_PATH_MAX];
     if (get_path_arg(req, path, sizeof(path)) != ESP_OK) {
@@ -455,12 +503,10 @@ static esp_err_t handle_api_files_delete(httpd_req_t *req) {
     if (stat(path, &st) != 0) {
         return httpd_resp_send_404(req);
     }
-    int rc = S_ISDIR(st.st_mode) ? rmdir(path) : unlink(path);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "%s(%s) failed: %d",
-                 S_ISDIR(st.st_mode) ? "rmdir" : "unlink", path, errno);
+    if (rmtree(path) != 0) {
+        ESP_LOGE(TAG, "rmtree(%s) failed: errno=%d", path, errno);
         return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                                   S_ISDIR(st.st_mode) ? "rmdir failed (empty?)" : "unlink failed");
+                                   "delete failed");
     }
     httpd_resp_set_type(req, "application/json");
     return httpd_resp_send(req, "{\"ok\":true}", 11);
@@ -480,8 +526,9 @@ esp_err_t admin_ui_start(void) {
     // longest-prefix specificity, so explicit paths win over "/*".
 
     static const httpd_uri_t routes[] = {
-        { .uri = "/admin",            .method = HTTP_GET,    .handler = handle_admin_root },
-        { .uri = "/admin/",           .method = HTTP_GET,    .handler = handle_admin_root },
+        { .uri = "/settings",         .method = HTTP_GET,    .handler = handle_settings_root },
+        { .uri = "/settings/",        .method = HTTP_GET,    .handler = handle_settings_root },
+        { .uri = "/settings/fflate.min.js", .method = HTTP_GET, .handler = handle_settings_fflate },
         { .uri = "/api/info",         .method = HTTP_GET,    .handler = handle_api_info },
         { .uri = "/api/config",       .method = HTTP_GET,    .handler = handle_api_config },
         { .uri = "/api/config",       .method = HTTP_POST,   .handler = handle_api_config },
@@ -501,7 +548,7 @@ esp_err_t admin_ui_start(void) {
             return e;
         }
     }
-    ESP_LOGI(TAG, "admin UI ready at /admin/ (embedded, %u bytes)",
-             (unsigned)(admin_html_end - admin_html_start));
+    ESP_LOGI(TAG, "settings UI ready at /settings/ (embedded, %u bytes)",
+             (unsigned)(settings_html_end - settings_html_start));
     return ESP_OK;
 }
