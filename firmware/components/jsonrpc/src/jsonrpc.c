@@ -11,6 +11,8 @@
 #include "esp_http_server.h"
 #include "cJSON.h"
 
+#include "mbedtls/base64.h"
+
 #include "ediabasx_platform.h"
 #include "http_static.h"
 #include "transport_kline.h"
@@ -484,9 +486,11 @@ static cJSON *handle_job(const cJSON *p) {
     char args_cp1252[1024];   // UTF-8→CP1252 is non-expanding; this caps
                               // at slightly more than the VM's per-job
                               // param budget. (EDXN_PARAM_MAXLEN * a few.)
-    uint8_t bin[256];
+    uint8_t bin[512];
     size_t bin_len = 0;
     if (cJSON_IsString(aj) && aj->valuestring) {
+        // Legacy semicolon-joined string form. UTF-8 → CP1252 so SGBD
+        // sees the bytes it expects.
         size_t in_len = strlen(aj->valuestring);
         if (in_len > 0) {
             size_t out_len = utf8_to_cp1252(aj->valuestring, in_len,
@@ -496,7 +500,58 @@ static cJSON *handle_job(const cJSON *p) {
             args = args_cp1252;
         }
     } else if (cJSON_IsArray(aj)) {
-        bin_len = decode_bytes(aj, bin, sizeof(bin));
+        // Modern array form — same shape as TS server's
+        // `decodeJobParams`: each entry is either a string (per-index
+        // string slot, read by `pari`) or `{binary: "<base64>"}`
+        // (apiJobData binary payload, read by `pary`/`parb`/`parw`/
+        // `parl`/`parr`). Both channels coexist; binary entries are
+        // concatenated into the single shared payload.
+        //
+        // Without binary support here, NCSX's CDHapiJobData calls
+        // (e.g. `C_S_LESEN` reading the coding store at a given
+        // address) fail with `ERROR_NO_BIN_BUFFER` because the SGBD's
+        // `pary` opcode finds the binary channel empty.
+        size_t args_pos = 0;
+        cJSON *entry;
+        cJSON_ArrayForEach(entry, aj) {
+            if (cJSON_IsString(entry) && entry->valuestring) {
+                size_t want = strlen(entry->valuestring);
+                if (args_pos > 0 && args_pos + 1 < sizeof(args_cp1252)) {
+                    args_cp1252[args_pos++] = ';';   // slot separator
+                }
+                size_t wrote = utf8_to_cp1252(entry->valuestring, want,
+                                               (uint8_t *)args_cp1252 + args_pos,
+                                               sizeof(args_cp1252) - args_pos - 1);
+                args_pos += wrote;
+            } else if (cJSON_IsObject(entry)) {
+                const cJSON *b64 = cJSON_GetObjectItemCaseSensitive(entry, "binary");
+                if (cJSON_IsString(b64) && b64->valuestring &&
+                    bin_len < sizeof(bin)) {
+                    size_t want = sizeof(bin) - bin_len;
+                    size_t got_bytes = 0;
+                    size_t src_len = strlen(b64->valuestring);
+                    if (mbedtls_base64_decode(bin + bin_len, want, &got_bytes,
+                                               (const unsigned char *)b64->valuestring,
+                                               src_len) == 0) {
+                        bin_len += got_bytes;
+                    } else {
+                        ESP_LOGW(TAG, "job: bad base64 in params[].binary");
+                    }
+                }
+            } else if (cJSON_IsNumber(entry)) {
+                // Legacy plain-number-array form (klineProbe-style).
+                // Treat the whole array as one binary buffer; bail
+                // back to old decode_bytes behaviour.
+                if (bin_len == 0 && args_pos == 0) {
+                    bin_len = decode_bytes(aj, bin, sizeof(bin));
+                    break;
+                }
+            }
+        }
+        if (args_pos > 0) {
+            args_cp1252[args_pos] = '\0';
+            args = args_cp1252;
+        }
     }
 
     edxn_error_t err = (bin_len > 0)
