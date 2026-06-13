@@ -21,6 +21,7 @@
 #include "esp_mac.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs.h"
@@ -76,11 +77,13 @@ static esp_err_t nvs_get_u8_default(nvs_handle_t h, const char *key,
     return err;
 }
 
-// Default SSID is "BimmerzBox-XXXX" derived from the MAC, so it's
-// stable across factory resets but unique per device.
+// Default SSID is "BimmerzBox-XXXX" derived from the C6's actual
+// SoftAP MAC (queried via the ESP-Hosted remote bridge, since the P4
+// has no Wi-Fi efuse). Stable across factory resets, unique per
+// device. Falls back to plain "BimmerzBox" if Wi-Fi isn't up yet.
 static void make_default_ssid(char *out, size_t out_len) {
     uint8_t mac[6] = { 0 };
-    if (esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP) != ESP_OK) {
+    if (esp_wifi_get_mac(WIFI_IF_AP, mac) != ESP_OK) {
         snprintf(out, out_len, "BimmerzBox");
         return;
     }
@@ -109,11 +112,18 @@ static esp_err_t handle_settings_fflate(httpd_req_t *req) {
 static esp_err_t handle_api_info(httpd_req_t *req) {
     const esp_app_desc_t *app = esp_app_get_description();
 
+    // The P4 has no Wi-Fi efuse — `esp_read_mac(_, ESP_MAC_WIFI_SOFTAP)`
+    // would return zeros because ESP-Hosted doesn't set the host base
+    // MAC. Ask the radio (C6) directly via the remote-RPC bridge.
     uint8_t mac[6] = { 0 };
-    esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
+    bool mac_ok = (esp_wifi_get_mac(WIFI_IF_AP, mac) == ESP_OK);
     char chip_id[18];
-    snprintf(chip_id, sizeof(chip_id), "%02X:%02X:%02X:%02X:%02X:%02X",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    if (mac_ok) {
+        snprintf(chip_id, sizeof(chip_id), "%02X:%02X:%02X:%02X:%02X:%02X",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    } else {
+        snprintf(chip_id, sizeof(chip_id), "unavailable");
+    }
 
     cJSON *r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "firmware", app->version);
