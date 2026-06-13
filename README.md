@@ -37,12 +37,20 @@ installer, no cable on the laptop, no Windows VM.
 cd firmware
 
 # Pick a board variant by layering its overlay onto sdkconfig.defaults.
-# Waveshare ESP32-P4 Module DEV-KIT (phase 1, bench):
-idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.waveshare" \
+#
+# Phase 1, bench — Waveshare ESP32-P4 Module DEV-KIT
+#   https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.waveshare_p4_module_dev_kit" \
        set-target esp32p4
 idf.py build
 
-# Custom dongle PCB (phase 3, post-fab):
+# Phase 2, bench — Waveshare ESP32-P4-WiFi6 Devkit (single-board)
+#   https://docs.waveshare.com/ESP32-P4-WIFI6
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.waveshare_p4_wifi6" \
+       set-target esp32p4
+idf.py build
+
+# Phase 3, final — custom Bimmerz Box dongle PCB
 idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.dongle" \
        set-target esp32p4
 idf.py build
@@ -85,7 +93,7 @@ zip* button — browser-side unzip via embedded fflate).
 
 GitHub Actions in [`.github/workflows/`](.github/workflows/):
 
-- **`firmware-build.yml`** — matrix build (waveshare + dongle) on every
+- **`firmware-build.yml`** — matrix build (`waveshare_p4_module_dev_kit` + `waveshare_p4_wifi6` + `dongle`) on every
   push / PR touching `firmware/`. Uploads per-board `.bin` artefacts;
   on GitHub Release `published`, attaches them to the release.
 - **`site-deploy.yml`** — builds the VitePress site and publishes to

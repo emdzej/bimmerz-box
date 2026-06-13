@@ -2,6 +2,8 @@
 
 // Waveshare ESP32-P4 Module DEV-KIT pin assignments (phase 1 bring-up).
 //
+// Board reference: https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT
+//
 // Pinout confirmed against:
 //   - Waveshare ESP32-P4-Platform examples (github.com/waveshareteam/ESP32-P4-Platform)
 //   - Espressif ESP-Hosted reference docs (P4 Function EV Board topology)

@@ -4,7 +4,7 @@
 # undefined pins as no-ops so the firmware boots far enough to serve
 # /admin/ + the SD-backed apps over Wi-Fi.
 
-CONFIG_BIMMERZ_BOARD_WAVESHARE=y
+CONFIG_BIMMERZ_BOARD_WAVESHARE_P4_MODULE_DEV_KIT=y
 
 # ---- ESP-Hosted: C6 as Wi-Fi+BLE co-processor over SDIO --------------------
 # 1.4.x defaults for IDF_TARGET_ESP32P4 already match the Waveshare board's

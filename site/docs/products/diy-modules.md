@@ -14,7 +14,7 @@ hobby box on the passenger floor, this is the path.
 ::: warning Draft
 The exact parts list is still being finalised. Treat the table
 below as the **shape** rather than a verified BOM — confirm pin
-mappings against the latest `firmware/components/board/include/boards/waveshare.h`
+mappings against the latest `firmware/components/board/include/boards/waveshare_p4_module_dev_kit.h`
 before you wire anything up.
 :::
 
@@ -28,7 +28,13 @@ Module on a breakout board with USB-C, microSD, RJ45, headers
 broken out.
 
 - [Waveshare product page](https://www.waveshare.com/esp32-p4-module-dev-kit.htm)
+  · [official docs](https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT)
 - Includes a mikroBUS-style header for click boards.
+- The successor target is the
+  [Waveshare ESP32-P4-WiFi6 Devkit](https://docs.waveshare.com/ESP32-P4-WIFI6)
+  (single-board variant; same C6 + SD pinmap, no Ethernet PHY). The
+  firmware ships a board overlay for it too — see
+  `sdkconfig.defaults.waveshare_p4_wifi6`.
 
 ### K-line transceiver
 
@@ -100,15 +106,15 @@ The bits you'll wire on the modules path:
 | ISO 9141 Click        | RX           | GPIO 4       | UART1 RX                           |
 | ISO 9141 Click        | K (bus)      | OBD-II pin 7 |                                    |
 | ISO 9141 Click        | VCC          | 3V3          | **3.3 V jumper on the click**      |
-| CAN breakout #0       | TX           | (TBD — currently `(-1)` on waveshare.h) | mikroBUS / GPIO header pin |
+| CAN breakout #0       | TX           | (TBD — currently `(-1)` on waveshare_p4_module_dev_kit.h) | mikroBUS / GPIO header pin |
 | CAN breakout #0       | RX           | (TBD)        |                                    |
 | CAN breakout #0       | STBY         | (TBD)        | Drive low for normal mode          |
 | CAN breakout #0       | CAN-H / L    | OBD-II 6 / 14 |                                   |
 | CAN breakout #1       | (same)       | (TBD)        | Second bus — pin allocation TBC    |
 
 The CAN GPIO assignments on the **dev board** are currently `(-1)`
-in `waveshare.h` because there's no on-board transceiver. If you
-wire up CAN breakouts you'll edit `waveshare.h` to point to whichever
+in `waveshare_p4_module_dev_kit.h` because there's no on-board transceiver. If you
+wire up CAN breakouts you'll edit `waveshare_p4_module_dev_kit.h` to point to whichever
 free GPIOs you've cabled, then re-flash. See
 [Free GPIOs on this board](https://github.com/emdzej/bimmerz-box/blob/main/docs/dev-board-pinout.md#free-gpios-on-this-board)
 for the safe pin list.
@@ -122,13 +128,13 @@ git clone https://github.com/emdzej/bimmerz-box
 cd bimmerz-box/firmware
 . $IDF_PATH/export.sh
 idf.py set-target esp32p4
-idf.py -DBOARD_VARIANT=waveshare build
+idf.py -DBOARD_VARIANT=waveshare_p4_module_dev_kit build
 idf.py -p /dev/cu.usbmodemXXXX flash monitor
 ```
 
-Note the `BOARD_VARIANT=waveshare` — that selects the dev-board pin
+Note the `BOARD_VARIANT=waveshare_p4_module_dev_kit` — that selects the dev-board pin
 map. If you've moved CAN pins to non-default GPIOs, hand-edit
-`waveshare.h` first.
+`waveshare_p4_module_dev_kit.h` first.
 
 Once flashed, follow the [quick start](/quickstart) — the box hosts
 the same Wi-Fi AP and the same web apps regardless of how its

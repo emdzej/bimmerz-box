@@ -37,7 +37,7 @@ bimmerz-box/
 ├── firmware/
 │   ├── CMakeLists.txt
 │   ├── sdkconfig.defaults
-│   ├── sdkconfig.waveshare   # board-specific overrides (phase 1)
+│   ├── sdkconfig.waveshare_p4_module_dev_kit   # board-specific overrides (phase 1)
 │   ├── sdkconfig.dongle      # board-specific overrides (phase 3)
 │   ├── partitions.csv
 │   ├── idf_component.yml     # pulls ediabasx-embedded from its own repo
@@ -528,7 +528,7 @@ status LED pattern (all four flashing in unison) confirms the reset.
 
 Two board variants, controlled by `sdkconfig.<board>`:
 
-- `waveshare` — phase 1, dev board with built-in C6, no transceivers
+- `waveshare_p4_module_dev_kit` — phase 1, dev board with built-in C6, no transceivers
   wired. K-line / CAN / IBUS / DoIP components compile but the OBD
   HAL routes `obd_set_mode()` to no-ops (with logging).
 - `dongle` — phase 3, custom hardware. Full transceiver wiring, all
@@ -542,7 +542,7 @@ the same header; switching boards is one Kconfig flip.
 
 ### 14.3 CI
 
-- Build matrix: `waveshare` × `dongle` × {Debug, Release}.
+- Build matrix: `waveshare_p4_module_dev_kit` × `dongle` × {Debug, Release}.
 - Static analysis: `idf.py clang-tidy` on the project + components.
 - Unit tests: ediabasx-embedded already has a test driver (`test/run.c`);
   ESP-IDF host tests can wrap the same harness for parsed-PRG regression.

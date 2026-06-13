@@ -29,7 +29,7 @@ construction differs.
 ## Common to both
 
 - **Firmware** — same `bimmerz_box.bin` from the firmware repo.
-  Build for `BOARD_VARIANT=waveshare` on the modules path, or
+  Build for `BOARD_VARIANT=waveshare_p4_module_dev_kit` on the modules path, or
   `BOARD_VARIANT=dongle` on the PCB path. Both flash the same way.
 - **Web apps** — same SD-card layout under `/sdcard/web/<app>/`
   and `/sdcard/data/<app>/`.

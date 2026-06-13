@@ -2,14 +2,21 @@ menu "Bimmerz Box"
 
     choice BIMMERZ_BOARD
         prompt "Target board"
-        default BIMMERZ_BOARD_WAVESHARE
+        default BIMMERZ_BOARD_WAVESHARE_P4_MODULE_DEV_KIT
         help
-            Selects the hardware platform. The Waveshare option is the
-            phase-1 dev-board target with no diagnostic transceivers
-            wired. The Dongle option is the final custom PCB.
+            Selects the hardware platform.
+            * Waveshare ESP32-P4 Module DEV-KIT (SoM + carrier) — phase-1
+              bench rig. No onboard diagnostic transceivers; mikroBUS
+              breakouts wire up K-line + CAN.
+            * Waveshare ESP32-P4-WiFi6 Devkit (single-board) — phase-2
+              bench rig. Same C6 + SD card pinout, no Ethernet PHY.
+            * Custom Bimmerz Box dongle PCB — phase-3, final hardware.
 
-        config BIMMERZ_BOARD_WAVESHARE
-            bool "Waveshare ESP32-P4 dev board"
+        config BIMMERZ_BOARD_WAVESHARE_P4_MODULE_DEV_KIT
+            bool "Waveshare ESP32-P4 Module DEV-KIT"
+
+        config BIMMERZ_BOARD_WAVESHARE_P4_WIFI6
+            bool "Waveshare ESP32-P4-WiFi6 Devkit"
 
         config BIMMERZ_BOARD_DONGLE
             bool "Custom Bimmerz Box dongle PCB"

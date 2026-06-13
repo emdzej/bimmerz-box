@@ -1,9 +1,15 @@
 # Waveshare ESP32-P4 Module DEV-KIT — Pinout
 
 GPIO assignments used by the firmware on the Waveshare ESP32-P4 Module
-DEV-KIT (the dev board the firmware is currently developed against).
+DEV-KIT (the dev board the firmware is currently developed against —
+[Waveshare docs](https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT)).
+The successor target is the
+[ESP32-P4-WiFi6 Devkit](https://docs.waveshare.com/ESP32-P4-WIFI6) —
+same SDIO + SD-card pin map, no Ethernet PHY (see
+[`boards/waveshare_p4_wifi6.h`](../firmware/components/board/include/boards/waveshare_p4_wifi6.h)).
+
 Definitions live in
-[`firmware/components/board/include/boards/waveshare.h`](../firmware/components/board/include/boards/waveshare.h).
+[`firmware/components/board/include/boards/waveshare_p4_module_dev_kit.h`](../firmware/components/board/include/boards/waveshare_p4_module_dev_kit.h).
 
 The ESP32-P4 SoC has 55 GPIOs (0–54), all routable through the GPIO
 matrix. Five of them are **strapping pins** (`GPIO 34, 35, 36, 37, 38`,
@@ -234,6 +240,6 @@ external driver's level at reset matches the strap default.
 ## Cross-reference
 
 - **Dongle PCB pin map** — `firmware/components/board/include/boards/dongle.h`
-- **Switching boards at build time** — set `BOARD_VARIANT` (waveshare /
+- **Switching boards at build time** — set `BOARD_VARIANT` (waveshare_p4_module_dev_kit /
   dongle) via the appropriate `sdkconfig.defaults.<board>` overlay.
 - **API endpoints that own each peripheral** — see [`docs/api.md`](api.md).

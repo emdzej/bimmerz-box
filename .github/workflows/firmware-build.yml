@@ -44,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        board: [waveshare, dongle]
+        board: [waveshare_p4_module_dev_kit, waveshare_p4_wifi6, dongle]
     steps:
       - name: Checkout bimmerz-box
         uses: actions/checkout@v4

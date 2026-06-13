@@ -1,0 +1,13 @@
+# Bimmerz Box — Waveshare ESP32-P4-WiFi6 Devkit overrides (phase 2).
+#
+# Single-board variant with onboard C6 (Wi-Fi 6 + BT 5.4). Pin map for
+# the C6 SDIO link and SD-card slot is identical to the Module DEV-KIT
+# (see boards/waveshare_p4_wifi6.h for the rationale). Ethernet PHY is
+# not confirmed present on the base devkit — disabled by default.
+
+CONFIG_BIMMERZ_BOARD_WAVESHARE_P4_WIFI6=y
+
+# ---- ESP-Hosted: C6 as Wi-Fi+BLE co-processor over SDIO --------------------
+# Same 1.4.x defaults as the Module DEV-KIT — the standard P4 SDIO Slot 1
+# pin map applies (CLK=18, CMD=19, D0=14, D1=15, D2=16, D3=17, RST=54).
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
