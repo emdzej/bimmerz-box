@@ -620,8 +620,9 @@ Generic CAN frame pipe (classical CAN; no CAN-FD). Index map:
 - `/0` → TWAI0 / TJA1051T #1 (`BOARD_CAN0_*` pins)
 - `/1` → TWAI1 / TJA1051T #2 (`BOARD_CAN1_*` pins)
 
-On boards where the transceiver isn't wired (Waveshare dev board → all
-`-1`), `can.open` returns `"can_not_present"`. Each index is its own
+On boards where the transceiver isn't wired (either Waveshare dev
+board → all `-1`), `can.open` returns `"can_not_present"`. Each index
+is its own
 lock domain — `/rpc/can/0` and `/rpc/can/1` can be held by different
 clients simultaneously.
 

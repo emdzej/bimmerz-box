@@ -239,7 +239,14 @@ external driver's level at reset matches the strap default.
 
 ## Cross-reference
 
-- **Dongle PCB pin map** — `firmware/components/board/include/boards/dongle.h`
-- **Switching boards at build time** — set `BOARD_VARIANT` (waveshare_p4_module_dev_kit /
-  dongle) via the appropriate `sdkconfig.defaults.<board>` overlay.
+- **WiFi6 Devkit pin map** — [`boards/waveshare_p4_wifi6.h`](../firmware/components/board/include/boards/waveshare_p4_wifi6.h)
+- **Dongle PCB pin map** — [`boards/dongle.h`](../firmware/components/board/include/boards/dongle.h)
+- **Switching boards at build time** — pick one of
+  `sdkconfig.defaults.waveshare_p4_module_dev_kit`,
+  `sdkconfig.defaults.waveshare_p4_wifi6`, or
+  `sdkconfig.defaults.dongle` and layer it via
+  `-DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.<variant>"`.
+  This sets the `CONFIG_BIMMERZ_BOARD_*` Kconfig choice, which the
+  dispatch header `boards/board.h` consumes to `#include` the right
+  per-variant pinmap.
 - **API endpoints that own each peripheral** — see [`docs/api.md`](api.md).

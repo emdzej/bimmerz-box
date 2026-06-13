@@ -15,17 +15,26 @@ ESP32-C6 attached as a Wi-Fi/BLE co-processor over SDIO. The P4 hosts:
 
 ### 1.1 Bring-up sequence
 
-Phase 1: **Waveshare ESP32-P4 Module DEV-KIT.** P4 + C6 + SD + Ethernet PHY are
-all present on the Waveshare board, so firmware can come up to a fully
-functioning HTTP + WS server before any custom hardware exists.
+Phase 1 — **[Waveshare ESP32-P4 Module DEV-KIT](https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT)**
+(SoM + carrier). P4 + C6 + SD + Ethernet PHY all present, so the firmware
+comes up to a fully functioning HTTP + WS server before any custom
+hardware exists. Diagnostic transceivers (L9637D, TJA1051T, TH3122…)
+get wired up on breakout boards / mikroBUS clicks off this board for
+validation against real ECUs.
 
-Phase 2: **Wired-up transceivers on a breadboard / breakout** off the
-Waveshare board. Validate L9637D, TMUX1208, TJA1051T/3, TH3122 with real
-test ECUs.
+Phase 2 — **[Waveshare ESP32-P4-WiFi6 Devkit](https://docs.waveshare.com/ESP32-P4-WIFI6)**
+(single-board variant). Same C6 + SD pin map as the Module DEV-KIT, no
+separate carrier required. No Ethernet PHY (LCD-derived design).
+Closer to the final dongle's form factor — useful for verifying the
+firmware works on a single-board target before the custom PCB lands.
 
-Phase 3: **Custom dongle PCB.** No firmware surprises expected — same
-peripherals, same drivers, just rerouted GPIO assignments via a board
-support definition.
+Phase 3 — **Custom Bimmerz Box dongle PCB.** No firmware surprises
+expected — same peripherals, same drivers, just rerouted GPIO
+assignments via a board support definition.
+
+All three variants are selectable at build time via a Kconfig choice
+(see §14.1); the only thing that changes between them is which
+`boards/<variant>.h` gets included.
 
 ## 2. Repository layout
 
@@ -37,8 +46,9 @@ bimmerz-box/
 ├── firmware/
 │   ├── CMakeLists.txt
 │   ├── sdkconfig.defaults
-│   ├── sdkconfig.waveshare_p4_module_dev_kit   # board-specific overrides (phase 1)
-│   ├── sdkconfig.dongle      # board-specific overrides (phase 3)
+│   ├── sdkconfig.defaults.waveshare_p4_module_dev_kit   # board overrides (phase 1)
+│   ├── sdkconfig.defaults.waveshare_p4_wifi6            # board overrides (phase 2)
+│   ├── sdkconfig.defaults.dongle                        # board overrides (phase 3)
 │   ├── partitions.csv
 │   ├── idf_component.yml     # pulls ediabasx-embedded from its own repo
 │   ├── main/
@@ -526,23 +536,36 @@ status LED pattern (all four flashing in unison) confirms the reset.
 
 ### 14.1 Targets
 
-Two board variants, controlled by `sdkconfig.<board>`:
+Three board variants, selected via `CONFIG_BIMMERZ_BOARD_*` (layered
+overlay file `sdkconfig.defaults.<variant>` on top of the common
+`sdkconfig.defaults`):
 
-- `waveshare_p4_module_dev_kit` — phase 1, dev board with built-in C6, no transceivers
-  wired. K-line / CAN / IBUS / DoIP components compile but the OBD
-  HAL routes `obd_set_mode()` to no-ops (with logging).
+- `waveshare_p4_module_dev_kit` — phase 1, [Waveshare ESP32-P4 Module
+  DEV-KIT](https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT). SoM +
+  carrier. Onboard C6 (Wi-Fi+BLE) over SDIO, SD slot, Ethernet PHY
+  broken out. K-line / CAN / IBUS / DoIP components compile but the
+  OBD HAL routes `obd_set_mode()` to no-ops (with logging) because
+  the transceivers don't exist on this board.
+- `waveshare_p4_wifi6` — phase 2, [Waveshare ESP32-P4-WiFi6
+  Devkit](https://docs.waveshare.com/ESP32-P4-WIFI6). Single-board
+  variant of the same family. Same C6 + SD pinmap; no Ethernet PHY.
 - `dongle` — phase 3, custom hardware. Full transceiver wiring, all
   modes active.
 
 ### 14.2 Pin assignments
 
-A single header `firmware/main/boards/<board>.h` defines every GPIO,
-UART, SPI, I2C, and TWAI assignment for that board. Components import
-the same header; switching boards is one Kconfig flip.
+A single header `firmware/components/board/include/boards/<variant>.h`
+defines every GPIO, UART, SPI, I2C, and TWAI assignment for that
+board. Components import via the dispatch header
+`boards/board.h`, which `#include`s the right per-variant file based
+on Kconfig.
 
 ### 14.3 CI
 
-- Build matrix: `waveshare_p4_module_dev_kit` × `dongle` × {Debug, Release}.
+- Build matrix: `waveshare_p4_module_dev_kit` × `waveshare_p4_wifi6`
+  × `dongle` — see `.github/workflows/firmware-build.yml`. Per-board
+  `.bin` artefacts are uploaded on every push; GitHub Release
+  `published` attaches them to the release.
 - Static analysis: `idf.py clang-tidy` on the project + components.
 - Unit tests: ediabasx-embedded already has a test driver (`test/run.c`);
   ESP-IDF host tests can wrap the same harness for parsed-PRG regression.
