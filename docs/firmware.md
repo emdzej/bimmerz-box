@@ -643,3 +643,166 @@ needs it; BMW J2534 software almost never does. ~$0.20 BOM if we add it.
 2. Add `transport_j2534` as a sibling protocol on those same transports.
 3. Add USB CDC-ACM device mode + admin UI toggle.
 4. Decide between a custom DLL and adopting the Tactrix protocol.
+
+## 17. Future work — dedicated VM task on core 1
+
+> **Status: deferred.** Documented here so the path is on record, but
+> not on the active roadmap. The current "VM runs inline on the httpd
+> worker" model is functionally complete and we'd rather nail down
+> correctness across all RPC flows before optimising for parallelism.
+> Revisit when long-job blocking becomes a visible UX problem (e.g.
+> the user can't read `/api/info` while a multi-minute `C_FA_LESEN`
+> runs).
+
+### 17.1 The gap
+
+FreeRTOS is configured SMP (`CONFIG_FREERTOS_NUMBER_OF_CORES=2`) and
+both HP cores are scheduled. But the task model documented in §4 — a
+dedicated `vm` task pinned to core 1, per-WS-connection `jsonrpc-N`
+tasks on core 0 — is **not** what the code does today:
+
+- `jsonrpc.c` calls `edxn_ediabas_load_sgbd/exec/exec_data()` **inline**
+  on whichever esp_http_server worker thread received the WS frame.
+- esp_http_server is single-threaded by default — one httpd task
+  serves every connection.
+- Only one explicit `xTaskCreatePinnedToCore` exists in the
+  application code (`usb_host_lib_task` → core 0). Every other task
+  uses plain `xTaskCreate` and runs with `tskNO_AFFINITY`, so the
+  scheduler load-balances.
+
+Practical impact: short jobs are fine (the second core is busy with
+esp_timer, SDIO ISRs, lwip, etc. anyway), but a long EDIABAS job
+blocks the single httpd thread — concurrent RPCs from any client
+stall until it finishes.
+
+### 17.2 Target design
+
+Single dedicated VM task, queue-fed, synchronous responses. RPC
+handlers post a job pointer, block on a semaphore, the VM task
+executes the call and signals done.
+
+```
+RPC handler (httpd thread, core 0)              VM task (core 1)
+─────────────────────────────────               ────────────────
+build vm_job_t on stack
+xQueueSend(vm_queue, &job_ptr, …)               xQueueReceive(blocking)
+xSemaphoreTake(job.done, timeout) ◀──── give ◀──  edxn_ediabas_exec(...)
+read job.result, return JSON                     job.encode(eb, out_ctx)
+                                                  xSemaphoreGive(job.done)
+```
+
+Job shape:
+
+```c
+typedef enum { VM_JOB_LOAD_SGBD, VM_JOB_EXEC, VM_JOB_EXEC_DATA } vm_job_kind_t;
+
+typedef struct {
+    vm_job_kind_t kind;
+    /* inputs (only the relevant subset used per kind) */
+    const char *sgbd_name;
+    const uint8_t *prg_bytes; size_t prg_len;
+    const char *job_name;
+    const char *args;
+    const uint8_t *bin; size_t bin_len;
+
+    /* encode results into the caller's JSON context while VM state is
+       still valid — avoids deep-copying result sets out of edxn
+       internals (next job invalidates the pointers). */
+    esp_err_t (*encode)(edxn_ediabas_t *eb, esp_err_t exec_err, void *out_ctx);
+    void *out_ctx;
+
+    /* outputs */
+    esp_err_t result;
+
+    /* sync */
+    SemaphoreHandle_t done;
+} vm_job_t;
+```
+
+**Why a synchronous encode-callback (not deep copy):**
+`edxn_ediabas_get_sets()` returns pointers into VM-owned state that
+the next job overwrites. Either we deep-copy to a malloc'd snapshot
+(more allocations, more memory) or the VM task invokes the
+caller-supplied encoder while still holding context. The callback
+path keeps the existing inline JSON-encoding code from `jsonrpc.c`
+almost untouched.
+
+**Core pinning:**
+
+| Task                 | Core | How                                         |
+|----------------------|------|---------------------------------------------|
+| `edxn_vm` (new)      | 1    | `xTaskCreatePinnedToCore(…, 16 KB, prio 5, …, 1)` |
+| httpd                | 0    | `cfg.core_id = 0` in `http_static.c`         |
+| esp_timer            | 0    | already default (`CONFIG_ESP_TIMER_TASK_AFFINITY=0x0`) |
+| ESP-Hosted SDIO      | —    | leave at managed-component defaults          |
+| `transport_*` RX     | —    | unchanged, no affinity                       |
+
+### 17.3 File-by-file changes
+
+| File | What changes |
+|---|---|
+| `firmware/components/ediabasx_platform/include/ediabasx_platform.h` | Add public `edxn_vm_submit(vm_job_t *job)` blocking entry point. |
+| `firmware/components/ediabasx_platform/src/ediabasx_platform.c` | Define the queue + task. Move the `edxn_ediabas_t *ediabasx_platform_eb()` accessor inside the VM task's address space. Start the task during `ediabasx_platform_init`. |
+| `firmware/components/jsonrpc/src/jsonrpc.c` | Replace each `edxn_ediabas_load_sgbd / exec / exec_data` call with `edxn_vm_submit(&job)` + waiting on `job.done`. The existing result-encoding code moves into the `encode` callback. |
+| `firmware/components/http_static/src/http_static.c` | Add `cfg.core_id = 0` near the httpd_config setup. |
+| `firmware/main/Kconfig.projbuild` | Add `BIMMERZ_VM_DEDICATED_TASK` (bool, default y). Lets us fall back to the inline path while shaking out regressions. |
+| `docs/firmware.md` §4 | Rewrite to match reality once the migration lands: one `edxn_vm` task on core 1, httpd on core 0, no per-connection `jsonrpc-N` task (esp_http_server doesn't spawn one). |
+
+### 17.4 Migration order
+
+1. **Land the plumbing (no behaviour change).** Add the queue, task,
+   `edxn_vm_submit` API. The task starts but the queue stays empty
+   because no callsite uses it yet. Kconfig flag default off. Builds
+   and boots clean.
+2. **Port `ediabasx.exec` through the queue.** Pick the most-exercised
+   RPC, route it through the submit API behind the Kconfig flag.
+   Toggle on at runtime, run NCSX / INPAX / EDIABASX flows, verify
+   result shapes unchanged.
+3. **Port `load_sgbd` + `exec_data`.** Same pattern. After this, every
+   VM call goes through the queue.
+4. **Pin httpd to core 0.** Flip `cfg.core_id`. Re-test all RPCs.
+5. **Stress test long-job concurrency.** Run a `C_FA_LESEN`
+   (multi-minute) and confirm `/api/info` and other RPCs respond
+   promptly on a second WS client. Without the change the second
+   connection stalls; with it, it stays responsive.
+6. **Remove the Kconfig escape hatch and the inline fallback code.**
+   Commit to the new model.
+7. **Update §4 task model** to match what's implemented.
+
+Each step is its own commit. Steps 1–4 are reversible via the Kconfig
+flag; step 6 commits to the new model.
+
+### 17.5 Risks & gaps
+
+- **No cooperative break in the C VM.** Documented as a known gap
+  in `ediabasx-embedded`'s CHANGELOG vs the TS reference's
+  `Interpreter.requestBreak()` / `Ediabas.break()`. Today, if a WS
+  client disconnects mid-`C_FA_LESEN`, the VM task keeps running to
+  completion (wasted work, but no leak — the abandoned `out_ctx`
+  just goes unread). Adding `edxn_vm_request_break()` upstream would
+  let us cancel. Out of scope for this migration.
+- **Queue depth.** Only one VM call can be in flight per WS
+  connection (RPC semantics are synchronous request/response).
+  Multi-client concurrency naturally serialises through the FIFO.
+  `vm_queue_size = 8` is plenty to absorb bursts.
+- **Watchdog.** A long BEST/2 dispatch loop on core 1 without a
+  `vTaskDelay(0)` could starve IDLE1. `esp_task_wdt` isn't
+  subscribed by `edxn_vm` by default; verify before flipping to
+  production. If we see trips, add a periodic yield in the opcode
+  dispatcher's inner loop (or leave IDLE at low prio).
+- **PSRAM stack reliability.** ESP32-P4 supports PSRAM-backed task
+  stacks. ISR work in the transport layer stays in internal RAM
+  (already true for `transport_*` RX tasks). Worth testing — fall
+  back to internal SRAM if anything misbehaves; cost is 16 KB.
+- **Hidden httpd-context dependencies.** If anything in the existing
+  inline call path implicitly relies on running under the httpd
+  worker's stack/thread context (e.g. reading `httpd_req_t *req`
+  fields), it'll break when moved. Audit `jsonrpc.c` before step 2;
+  anything that touches `req` must stay on the RPC-handler side, not
+  in the encode callback.
+
+### 17.6 Effort estimate
+
+~1–2 days of careful work end-to-end, dominated by steps 2–3
+(porting + regression-testing every RPC method) and step 5
+(multi-client stress). Steps 1, 4, 6, 7 are each under an hour.
