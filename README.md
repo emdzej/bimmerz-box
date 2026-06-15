@@ -8,6 +8,8 @@ installer, no cable on the laptop, no Windows VM.
 → **Product site & user docs:** [box.bimmerz.app](https://box.bimmerz.app)
 → **Architecture docs:** [`docs/`](docs/) (firmware, API, hardware,
   dev-board pinout)
+→ **Release log:** [`CHANGELOG.md`](CHANGELOG.md). Tags are bare
+  semver (no `v` prefix).
 
 ## What's inside
 
