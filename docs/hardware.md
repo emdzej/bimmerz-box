@@ -232,6 +232,15 @@ CAN-L at the dongle — so the dongle end is properly terminated. The
 TJA1051T/3 in the BOM doesn't include internal termination; add an
 external resistor or use a variant that does.
 
+**Recommended parts:**
+
+- Wire taps: **BMW p/n 61138364566** (TE / AMP `0-1393431-1`).
+  Sealed quick-splice connector designed for the gauge of wire BMW
+  uses in this loom. Don't substitute with hardware-store
+  scotchlocks — they cold-flow and lose contact over time.
+- OBD-II socket pins: standard crimp pins for the back of `X19527`
+  to terminate the new twisted pair into pins 6 and 14.
+
 ## 8. Pin 8 hardware interlock (critical)
 
 OBD pin 8 has two mutually-exclusive roles depending on chassis:

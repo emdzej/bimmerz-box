@@ -126,6 +126,16 @@ resistor between CAN-H and CAN-L at the dongle end). Otherwise
 you'll see frame errors under load.
 :::
 
+**Parts to source:**
+
+- **Wire taps** — use proper sealed quick-splice connectors, not
+  hardware-store scotchlocks (which cold-flow and lose contact).
+  Recommended: **BMW p/n 61138364566** (TE / AMP `0-1393431-1`) —
+  the same tap BMW uses on the original loom for the same wire gauge.
+- **OBD-II socket pins** — standard crimp pins for the back of the
+  OBD-II socket so the new twisted pair lands cleanly into pins 6
+  and 14.
+
 Other E-chassis with the same OBD-II-no-CAN limitation follow the
 same pattern; consult the BMW wiring diagram for that chassis to
 find the equivalent of `X11175`.
