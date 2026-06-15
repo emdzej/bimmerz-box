@@ -98,6 +98,38 @@ Pin mapping the dongle uses:
 On bench: power the cable from any 12 V source between pin 16 and
 pin 4 (or pin 5).
 
+### If your car doesn't have CAN on OBD-II (E46 and similar)
+
+Not every BMW chassis routes the diagnostic CAN bus to the OBD-II
+socket. The **E46** is the canonical example: connector `X19527` (the
+OBD-II socket itself) has K-line but **no D-CAN**. The dongle's K-line
+side will still work — fault codes, DS2 / KWP2000 jobs — but anything
+that needs CAN (live CAN dashboard, NCS-Expert coding on CAN-only
+control units) won't see a bus.
+
+The fix is a one-time wiring job from the instrument cluster (`IKE`)
+connector `X11175` (black) to the OBD-II socket. Use **twisted pair**
+for noise immunity:
+
+| Cluster `X11175` | OBD-II `X19527` | Signal               | Wire colour    |
+|------------------|-----------------|----------------------|----------------|
+| pin 9            | pin 6           | D-CAN-H              | yellow / red   |
+| pin 10           | pin 14          | D-CAN-L              | yellow / brown |
+
+::: warning CAN topology
+CAN is designed as a daisy-chained bus terminated at the two ends —
+not a star. Tapping in from the cluster turns your dongle into a
+**stub branch** off the main bus. It works at 500 kbit/s with short
+stubs (you'll be fine for normal OBD-II cable lengths), but make sure
+the dongle's CAN transceiver has termination enabled (or add a 120 Ω
+resistor between CAN-H and CAN-L at the dongle end). Otherwise
+you'll see frame errors under load.
+:::
+
+Other E-chassis with the same OBD-II-no-CAN limitation follow the
+same pattern; consult the BMW wiring diagram for that chassis to
+find the equivalent of `X11175`.
+
 ## Changing the Wi-Fi credentials
 
 1. Connect, open `http://172.16.7.1/settings/`.

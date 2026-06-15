@@ -206,6 +206,32 @@ coding workflows without external tooling.
 | 15 | L-line | AO3416 N-FET (output only) |
 | 16 | Battery +12 V | power input |
 
+### 7.1 Chassis-specific wiring notes
+
+Not every BMW chassis exposes every protocol on the OBD-II socket. The
+dongle assumes the table above is wired through; if a particular
+chassis routes a bus elsewhere, the owner has to tap it across.
+
+**E46 (and similar M-OBD-only E-chassis):** D-CAN is **not** wired to
+the OBD-II socket (`X19527`). For diagnostic tools that need CAN —
+including this dongle when running CAN-side jobs — the most
+convenient tap point is the instrument cluster (`IKE`) connector
+`X11175` (black). Run a twisted pair from cluster to socket:
+
+| Cluster `X11175` | OBD-II `X19527` | Signal               | Wire colour    |
+|------------------|-----------------|----------------------|----------------|
+| pin 9            | pin 6           | D-CAN-H              | yellow / red   |
+| pin 10           | pin 14          | D-CAN-L              | yellow / brown |
+
+**CAN topology caveat:** CAN was designed as a daisy-chained bus with
+termination at the two ends, not a star. An OBD-II tap from the
+cluster turns the dongle into a stub branch off the main bus. It
+still works at 500 kbit/s with short stubs, but enable the
+transceiver's onboard termination — or add a 120 Ω across CAN-H /
+CAN-L at the dongle — so the dongle end is properly terminated. The
+TJA1051T/3 in the BOM doesn't include internal termination; add an
+external resistor or use a variant that does.
+
 ## 8. Pin 8 hardware interlock (critical)
 
 OBD pin 8 has two mutually-exclusive roles depending on chassis:
