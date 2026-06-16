@@ -11,6 +11,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_http_server.h"
+#include "freertos/FreeRTOS.h"
 #include "lwip/inet.h"
 
 #include "storage.h"
@@ -43,6 +44,13 @@ static httpd_handle_t s_server = NULL;
 static uint32_t s_accepted_ips[CAPTIVE_ACCEPTED_MAX];
 static size_t   s_accepted_next = 0;
 static size_t   s_accepted_count = 0;
+// Spinlock for the three statics above. esp_http_server is
+// single-threaded today so this lock is contention-free, but the
+// reads/writes split across captive_is_accepted + captive_mark_accepted
+// would race the moment anyone bumps worker_count or moves a check
+// onto a separate task. Cheap insurance; portMUX critical sections
+// here only span a few instructions.
+static portMUX_TYPE s_captive_mux = portMUX_INITIALIZER_UNLOCKED;
 
 static uint32_t client_ipv4(httpd_req_t *req) {
     int sockfd = httpd_req_to_sockfd(req);
@@ -60,21 +68,37 @@ static uint32_t client_ipv4(httpd_req_t *req) {
     return *(const uint32_t *)&addr.sin6_addr.s6_addr[12];
 }
 
-static bool captive_is_accepted(uint32_t ip) {
-    if (ip == 0) return false;
+// Caller holds `s_captive_mux`.
+static bool captive_contains_locked(uint32_t ip) {
     for (size_t i = 0; i < s_accepted_count; ++i) {
         if (s_accepted_ips[i] == ip) return true;
     }
     return false;
 }
 
+static bool captive_is_accepted(uint32_t ip) {
+    if (ip == 0) return false;
+    portENTER_CRITICAL(&s_captive_mux);
+    bool ok = captive_contains_locked(ip);
+    portEXIT_CRITICAL(&s_captive_mux);
+    return ok;
+}
+
 static void captive_mark_accepted(uint32_t ip) {
-    if (ip == 0 || captive_is_accepted(ip)) return;
-    s_accepted_ips[s_accepted_next] = ip;
-    s_accepted_next = (s_accepted_next + 1) % CAPTIVE_ACCEPTED_MAX;
-    if (s_accepted_count < CAPTIVE_ACCEPTED_MAX) s_accepted_count++;
-    struct in_addr a = { .s_addr = ip };
-    ESP_LOGI(TAG, "captive: marked %s as accepted", inet_ntoa(a));
+    if (ip == 0) return;
+    bool added = false;
+    portENTER_CRITICAL(&s_captive_mux);
+    if (!captive_contains_locked(ip)) {
+        s_accepted_ips[s_accepted_next] = ip;
+        s_accepted_next = (s_accepted_next + 1) % CAPTIVE_ACCEPTED_MAX;
+        if (s_accepted_count < CAPTIVE_ACCEPTED_MAX) s_accepted_count++;
+        added = true;
+    }
+    portEXIT_CRITICAL(&s_captive_mux);
+    if (added) {
+        struct in_addr a = { .s_addr = ip };
+        ESP_LOGI(TAG, "captive: marked %s as accepted", inet_ntoa(a));
+    }
 }
 
 // ---- helpers --------------------------------------------------------------
@@ -102,10 +126,18 @@ static const char *content_type_for(const char *path) {
 // Returns true if `uri` contains any traversal segments. Defensive even
 // though esp_http_server normalizes — `..` slipping past would let a
 // client read outside the SD card roots.
+//
+// We also reject any URI containing `%`. esp_http_server doesn't
+// URL-decode req->uri today, so `%2e%2e` is opaque to VFS — but if a
+// future IDF update or middleware decodes upstream of these handlers,
+// `uri_is_safe()`'s substring scan would silently miss the encoded
+// form. Refusing `%` outright keeps the substring check honest. App /
+// dashboard paths don't contain `%` literals in practice.
 static bool uri_is_safe(const char *uri) {
     if (strstr(uri, "/../") != NULL) return false;
     if (strstr(uri, "/./") != NULL)  return false;
     if (strstr(uri, "//") != NULL)   return false;
+    if (strchr(uri, '%') != NULL)    return false;
     size_t n = strlen(uri);
     if (n >= 3 && strcmp(uri + n - 3, "/..") == 0) return false;
     return true;
