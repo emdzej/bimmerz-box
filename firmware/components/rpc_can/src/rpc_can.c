@@ -259,20 +259,41 @@ static void driver_uninstall(can_session_t *s) {
 
 // ---- RX pump task ---------------------------------------------------------
 
+// Reading `s->twai` outside `s_lock` and dereferencing it in
+// `twai_receive_v2` was a use-after-free under contention: a concurrent
+// `can.close` ran `driver_uninstall(s)` (which calls
+// `twai_driver_uninstall_v2(s->twai); s->twai = NULL`) at the same time
+// this task was inside the receive call. Fix: capture `rx_run` and
+// `s->twai` under the lock at the top of each iteration; do the
+// receive outside the lock with the captured handle; clear
+// `s->rx_task` (also under the lock) as the very last act, so the
+// shutdown side can join cleanly before `driver_uninstall` fires.
 static void rx_pump_task(void *arg) {
     int idx = (int)(intptr_t)arg;
     can_session_t *s = &s_sessions[idx];
 
-    while (s->rx_run) {
+    for (;;) {
+        xSemaphoreTake(s_lock, portMAX_DELAY);
+        bool          run  = s->rx_run;
+        twai_handle_t twai = s->twai;
+        xSemaphoreGive(s_lock);
+
+        if (!run) break;
+        if (!twai) {
+            vTaskDelay(pdMS_TO_TICKS(RPC_CAN_RX_TICK_MS));
+            continue;
+        }
+
         twai_message_t msg;
-        if (!s->twai) { vTaskDelay(pdMS_TO_TICKS(RPC_CAN_RX_TICK_MS)); continue; }
-        esp_err_t err = twai_receive_v2(s->twai, &msg,
+        esp_err_t err = twai_receive_v2(twai, &msg,
                                          pdMS_TO_TICKS(RPC_CAN_RX_TICK_MS));
         if (err == ESP_ERR_TIMEOUT) continue;
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "[%d] twai_receive_v2: %s", idx, esp_err_to_name(err));
             continue;
         }
+
+        // Re-read holder/server under the lock — they can change mid-receive.
         xSemaphoreTake(s_lock, portMAX_DELAY);
         int            fd  = s->holder_fd;
         httpd_handle_t srv = s->server;
@@ -290,17 +311,48 @@ static void rx_pump_task(void *arg) {
         char *text = env_notification("can.rx", params);
         ws_send_owned(srv, fd, text);
     }
+
+    xSemaphoreTake(s_lock, portMAX_DELAY);
     s->rx_task = NULL;
+    xSemaphoreGive(s_lock);
     vTaskDelete(NULL);
 }
 
 // ---- session ownership ----------------------------------------------------
 
+// Called with `s_lock` held. Drops the lock temporarily while joining
+// `rx_pump_task` so the driver isn't uninstalled out from under an
+// in-flight `twai_receive_v2`. The lock is re-acquired before the
+// final `driver_uninstall` + state clear. Callers must not assume the
+// lock has been held continuously across this call.
 static void release_session_locked(int idx) {
     can_session_t *s = &s_sessions[idx];
+
     s->rx_run = false;
-    // Let the rx task observe rx_run=false on its next tick; meanwhile
-    // tear down the driver so the controller stops driving the bus.
+    TaskHandle_t task = s->rx_task;
+
+    if (task) {
+        xSemaphoreGive(s_lock);
+        // Poll for the rx task to clear `s->rx_task` under its own
+        // lock cycle (see rx_pump_task tail). The wait ceiling is
+        // 20 × RX_TICK so a stuck task can't wedge shutdown forever;
+        // in practice the task exits within one iteration of its loop.
+        bool joined = false;
+        for (int i = 0; i < 20; i++) {
+            vTaskDelay(pdMS_TO_TICKS(RPC_CAN_RX_TICK_MS));
+            xSemaphoreTake(s_lock, portMAX_DELAY);
+            if (!s->rx_task) { joined = true; break; }
+            xSemaphoreGive(s_lock);
+        }
+        if (!joined) {
+            xSemaphoreTake(s_lock, portMAX_DELAY);
+            ESP_LOGE(TAG, "[%d] rx_task didn't exit in time; "
+                          "proceeding with driver teardown anyway", idx);
+        }
+    }
+    // s_lock held now (re-acquired during the join above, or never
+    // dropped if there was no rx task to wait for).
+
     driver_uninstall(s);
     s->holder_fd = 0;
     s->server = NULL;
