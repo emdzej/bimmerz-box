@@ -12,6 +12,10 @@
 #include "esp_check.h"
 #include "esp_netif.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
+
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
@@ -60,6 +64,12 @@ typedef struct __attribute__((__packed__))
 struct dns_server_handle {
     bool started;
     TaskHandle_t task;
+    // Given by the task as its very last act before vTaskDelete(NULL),
+    // so stop_dns_server can join cleanly before `free(handle)`. Without
+    // this the original Espressif example had a double-delete race
+    // (task self-deletes, stop_dns_server vTaskDeletes again + frees
+    // the handle while the task may still be running its tail).
+    SemaphoreHandle_t exit_sem;
     int num_of_entries;
     dns_entry_pair_t entry[];
 };
@@ -121,6 +131,15 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t 
     header->flags |= QR_FLAG;
 
     uint16_t qd_count = ntohs(header->qd_count);
+
+    // Defensive: the per-question loop below doesn't advance cur_qd_ptr
+    // or cur_ans_ptr, so qd_count > 1 would re-parse question 0 and
+    // overwrite answer 0. Captive-portal clients always send exactly
+    // one question, so reject everything else outright rather than
+    // pretend to handle it.
+    if (qd_count != 1) {
+        return -1;
+    }
     header->an_count = htons(qd_count);
 
     int reply_len = qd_count * sizeof(dns_answer_t) + req_len;
@@ -158,7 +177,7 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t 
                         esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey(h->entry[i].if_key), &ip_info);
                         ip.addr = ip_info.ip.addr;
                         break;
-                    } else if (h->entry->ip.addr != IPADDR_ANY) {
+                    } else if (h->entry[i].ip.addr != IPADDR_ANY) {
                         ip.addr = h->entry[i].ip.addr;
                         break;
                     }
@@ -218,13 +237,21 @@ void dns_server_task(void *pvParameters)
         }
         ESP_LOGI(TAG, "Socket bound, port %d", DNS_PORT);
 
+        // Short recv timeout so stop_dns_server's `started=false` is
+        // observed promptly (otherwise we'd be parked in recvfrom
+        // forever and shutdown would never complete).
+        struct timeval to = { .tv_sec = 0, .tv_usec = 500000 };
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &to, sizeof(to));
+
         while (handle->started) {
-            ESP_LOGI(TAG, "Waiting for data");
             struct sockaddr_in6 source_addr; // Large enough for both IPv4 or IPv6
             socklen_t socklen = sizeof(source_addr);
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
 
-            // Error occurred during receiving
+            if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                // Recv timeout — just loop, re-check `started`.
+                continue;
+            }
             if (len < 0) {
                 ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
                 close(sock);
@@ -259,10 +286,17 @@ void dns_server_task(void *pvParameters)
         }
 
         if (sock != -1) {
-            ESP_LOGE(TAG, "Shutting down socket");
+            ESP_LOGI(TAG, "Shutting down socket");
             shutdown(sock, 0);
             close(sock);
         }
+    }
+    // Signal-and-wait teardown: hand the semaphore to stop_dns_server
+    // as the very last thing we do, then self-delete. After the give,
+    // stop_dns_server will free `handle` — so we must not touch it
+    // again. The vTaskDelete(NULL) below doesn't dereference handle.
+    if (handle->exit_sem) {
+        xSemaphoreGive(handle->exit_sem);
     }
     vTaskDelete(NULL);
 }
@@ -276,15 +310,32 @@ dns_server_handle_t start_dns_server(dns_server_config_t *config)
     handle->num_of_entries = config->num_of_entries;
     memcpy(handle->entry, config->item, config->num_of_entries * sizeof(dns_entry_pair_t));
 
-    xTaskCreate(dns_server_task, "dns_server", 4096, handle, 5, &handle->task);
+    handle->exit_sem = xSemaphoreCreateBinary();
+    if (!handle->exit_sem) {
+        free(handle);
+        return NULL;
+    }
+
+    if (xTaskCreate(dns_server_task, "dns_server", 4096, handle, 5,
+                    &handle->task) != pdPASS) {
+        vSemaphoreDelete(handle->exit_sem);
+        free(handle);
+        return NULL;
+    }
     return handle;
 }
 
 void stop_dns_server(dns_server_handle_t handle)
 {
-    if (handle) {
-        handle->started = false;
-        vTaskDelete(handle->task);
-        free(handle);
+    if (!handle) return;
+    // Signal-and-wait teardown. The task observes `started=false`
+    // within one recv-timeout (500 ms), gives the exit semaphore as
+    // its last act before vTaskDelete(NULL), then frees the handle
+    // here knowing the task is gone.
+    handle->started = false;
+    if (handle->exit_sem) {
+        xSemaphoreTake(handle->exit_sem, pdMS_TO_TICKS(2000));
+        vSemaphoreDelete(handle->exit_sem);
     }
+    free(handle);
 }
