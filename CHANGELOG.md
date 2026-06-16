@@ -13,6 +13,65 @@ isn't clean).
 
 ## [Unreleased]
 
+### Fixed
+
+Correctness pass over the firmware in response to a post-0.1.0 code
+review. Each fix individually links to its CR item number.
+
+- **CAN session close UAF (`rpc_can`, CR #10).** `rx_pump_task` read
+  `s->twai` outside `s_lock` and dereferenced it in
+  `twai_receive_v2`; a concurrent `can.close` could call
+  `twai_driver_uninstall_v2` in the same window, freeing the handle
+  mid-receive. Restructured to capture the handle under the lock,
+  receive outside, and join the pump task before
+  `driver_uninstall` fires.
+- **DNS server teardown UAF (`dns_server`, CR #7).** The
+  captive-portal task self-deleted via `vTaskDelete(NULL)` while
+  `stop_dns_server` `vTaskDelete`'d the same handle and freed the
+  struct; in the wrong interleave the task accessed freed memory on
+  the way out. Replaced with signal-and-join via an exit semaphore
+  plus a 500 ms `SO_RCVTIMEO` so the loop notices shutdown promptly.
+- **DNS wildcard entry deref (`dns_server`, CR #5).** The IP
+  fallback at `parse_dns_request` indexed `h->entry->ip.addr`
+  (always entry 0) instead of `h->entry[i].ip.addr`. Latent — only
+  fires when a second wildcard rule is registered.
+- **DNS multi-question handling (`dns_server`, CR #6).** The
+  per-question loop never advanced `cur_qd_ptr` / `cur_ans_ptr`,
+  so `qd_count > 1` would re-parse question 0 and overwrite
+  answer 0. Reject upfront — captive-portal clients always send
+  exactly one question anyway.
+- **Boot resilience (`app_main`, CR #11).** A single transient
+  ESP-Hosted SDIO glitch on cold boot used to bootloop the dongle
+  because every stage went through `ESP_ERROR_CHECK`. Tiered
+  handling now: essentials still panic, network bring-up (C6 link,
+  Wi-Fi AP) retries 5× with linear backoff, and auxiliary stages
+  (ediabasx VM, JSON-RPC routes, settings UI, OTA register, USB
+  host) log-and-continue. Documented in the file header.
+
+### Security
+
+- **Captive-accept ring lock (`http_static`, CR #8).**
+  `s_accepted_ips`, `s_accepted_next` and `s_accepted_count` were
+  mutated by HTTP workers with no synchronisation. esp_http_server
+  is single-threaded today so the race never fires in practice, but
+  a later config change (bumped worker count, off-task checks)
+  would corrupt the ring. Wrapped with `portMUX_TYPE`.
+- **Reject `%` in app/dashboard paths (`http_static`, CR #12).**
+  `uri_is_safe()` did substring checks for `/../` etc. — correct
+  only as long as esp_http_server doesn't URL-decode `req->uri`
+  before the handler sees it. Reject any `%` outright so the
+  substring scan stays honest under future IDF changes. App and
+  dashboard URIs never contain `%` literals in practice.
+
+### Deferred (not in this pre-release window)
+
+- **`transport_kline` static state under a mutex (CR #9).** The
+  global `s_session` / `s_last_response_ms` would race the moment
+  VM work moves off the httpd worker thread. Fix belongs together
+  with the dedicated-VM-task migration documented in
+  [`docs/firmware.md`](docs/firmware.md) §17 — same threading-model
+  change, lands in the same commit series.
+
 ## [0.1.0] — 2026-06-15
 
 Initial public release. The Waveshare ESP32-P4 Module DEV-KIT runs
