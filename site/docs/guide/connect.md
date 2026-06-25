@@ -132,9 +132,34 @@ you'll see frame errors under load.
   hardware-store scotchlocks (which cold-flow and lose contact).
   Recommended: **BMW p/n 61138364566** (TE / AMP `0-1393431-1`) —
   the same tap BMW uses on the original loom for the same wire gauge.
-- **OBD-II socket pins** — standard crimp pins for the back of the
-  OBD-II socket so the new twisted pair lands cleanly into pins 6
-  and 14.
+- **OBD-II socket housing** — already in the car. It's a TE
+  Connectivity **`968915-1`** (BMW OE `61138380698`). For the
+  back-of-socket terminals you'll crimp onto the new pair, see the
+  table below.
+
+::: warning Contact family
+The OBD-II socket only mates with **Micro Timer II** female
+contacts — 1.6 × 0.6 mm tab, double locking lance. **MQS** (0.63 mm)
+and **Micro Timer I** contacts won't latch. Don't bulk-buy on price
+without confirming the family.
+:::
+
+**OBD-II socket crimp contacts** — for the IKE→OBD twisted pair
+(thin signal wire), use the bottom row of this table; for any
+re-pinning of supply / ground / main signals (0.5–1.0 mm² wire),
+use the top row.
+
+| Wire | Plating | Reel / strip | Loose pieces | BMW OE equiv. |
+|---|---|---|---|---|
+| 0.50–1.00 mm² | Gold | `964263-3` *(sealed: `964274-3`)* | `964275-3` | `61138364519` |
+| 0.50–1.00 mm² | Tin  | `964263-2` *(sealed: `964274-2`)* | `964275-2` | — |
+| 0.20–0.60 mm² | Gold | `969028-3` | `969019-3` | `61138366598` |
+| 0.20–0.60 mm² | Tin  | `969028-2` | `969019-2` *(or `969005-2`)* | — |
+
+Sealed-variant SKUs (`964274-x`, `964275-x` etc.) are easier to find
+at retail than strictly-unsealed parts and are 100 % compatible —
+same contact-can geometry, same latch pitch. Just crimp directly
+and skip the rubber seal.
 
 Other E-chassis with the same OBD-II-no-CAN limitation follow the
 same pattern; consult the BMW wiring diagram for that chassis to

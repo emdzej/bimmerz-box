@@ -238,8 +238,42 @@ external resistor or use a variant that does.
   Sealed quick-splice connector designed for the gauge of wire BMW
   uses in this loom. Don't substitute with hardware-store
   scotchlocks — they cold-flow and lose contact over time.
-- OBD-II socket pins: standard crimp pins for the back of `X19527`
-  to terminate the new twisted pair into pins 6 and 14.
+
+#### OBD-II socket — housing and crimp contacts
+
+The OBD-II socket in BMW vehicles is **TE Connectivity `968915-1`**
+(BMW OE `61138380698` / `8380698`). It mates **only with female
+contacts from the Micro Timer II family** — tab size **1.6 × 0.6 mm**,
+double locking lance. **MQS** contacts (0.63 mm tab — e.g. TE
+`963715-1`) and **Micro Timer I** do **not** fit and will not latch.
+
+Two contact sizes cover everything you'd terminate into the back of
+the socket:
+
+**Standard wires — 0.50 to 1.00 mm² (12 V supply on pin 16, grounds
+on pins 4 and 5, main signal lines):**
+
+| Plating | Reel / strip *(cut to length)* | Loose pieces *(hand-crimp friendly)* | Notes |
+|---|---|---|---|
+| **Gold (Au)** | `964263-3` *(sealed-style equivalent: `964274-3`)* | `964275-3` | Direct equivalent of BMW OE `61138364519`. Recommended — gold plating prevents tarnish and intermittent contact. |
+| **Tin (Sn)** | `964263-2` *(sealed: `964274-2`)* | `964275-2` | Economy tin-plated alternative. |
+
+**Thin wires — 0.20 to 0.60 mm² (individual K-line / CAN / Ethernet
+diagnostic conductors, e.g. the IKE→OBD CAN tap above):**
+
+| Plating | Reel / strip | Loose pieces | Notes |
+|---|---|---|---|
+| **Gold (Au)** | `969028-3` | `969019-3` | Direct equivalent of BMW OE `61138366598`. Designed for clean crimps on thin signal wire. |
+| **Tin (Sn)** | `969028-2` | `969019-2` *(also `969005-2`)* | Tin-plated thin-wire variant. |
+
+**Why "sealed / SWS" variants appear in the table.** The OBD-II
+socket inside the cabin is not sealed against moisture, but contacts
+designed for sealed connectors (`964274-x`, `964275-x`) share the
+exact same contact-can geometry and locking-lance pitch as the
+unsealed versions, so they latch and connect identically. They're
+included here because the loose-piece SKUs are far easier to source
+through general electronics retail than strictly-unsealed variants.
+Just crimp directly onto the wire and skip the rubber seal.
 
 ## 8. Pin 8 hardware interlock (critical)
 
