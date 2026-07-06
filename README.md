@@ -155,6 +155,44 @@ See [`dashboard/README.md`](dashboard/README.md) for deploy paths
 (settings file browser, `/api/files/upload`, or the *Upload & extract
 zip* button — browser-side unzip via embedded fflate).
 
+## App manifest
+
+Sibling apps under `/sdcard/apps/<slug>/` can ship an optional
+`manifest.json` next to their `index.html`. The dashboard auto-
+discovers app folders (via `/api/files?path=/sdcard/apps`) and reads
+each manifest to render the corresponding tile — no dashboard or
+firmware rebuild is needed when a new app lands. Missing / malformed
+manifests still render a tile with defaults.
+
+Schema (all fields optional):
+
+| Field         | Type       | Default                              | Purpose                                                                     |
+|---------------|------------|--------------------------------------|-----------------------------------------------------------------------------|
+| `name`        | string     | slug uppercased                      | Display name on the tile.                                                   |
+| `description` | string     | `""`                                 | Short tagline under the name.                                               |
+| `version`     | string     | (unshown for now)                    | Reserved for future dashboard revisions.                                    |
+| `icon`        | string     | (none)                               | Path (relative to the app folder) to an SVG / PNG icon.                     |
+| `accent`      | string     | trailing `"X"` if name ends in `X`   | Trailing chars of `name` styled with the M-tricolour accent. `""` opts out. |
+| `category`    | string     | (unshown for now)                    | Future: dashboard groups tiles by this label.                               |
+| `requires`    | `string[]` | `[]`                                 | Advisory capability list (`"can"`, `"kline"`, …). No runtime enforcement.   |
+
+Example — `/sdcard/apps/ediabasx/manifest.json`:
+
+```json
+{
+  "name": "EDIABASX",
+  "description": "Diagnostic jobs — DS2 / KWP2000",
+  "version": "0.4.2",
+  "icon": "icon.svg",
+  "requires": ["kline", "can"]
+}
+```
+
+Canonical schema definition lives in
+[`dashboard/src/tiles.ts`](dashboard/src/tiles.ts) (the `AppManifest`
+type). User-facing walkthrough with more examples in the
+[site guide](https://box.bimmerz.app/guide/apps#app-manifest).
+
 ## Updating a live dongle
 
 - **Firmware OTA:** Open `http://172.16.7.1/settings/` → *Firmware
