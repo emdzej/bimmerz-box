@@ -48,11 +48,12 @@ broken out.
 
 ### K-line transceiver
 
-**MikroE ISO 9141 Click** — small breakout carrying an L9637D. Drops
+**MikroE ISO 9141 Click** — the **L9637D013TR** breakout board (ST
+L9637D in SO-8 automotive-grade, on a mikroBUS carrier). Drops
 straight into the dev kit's mikroBUS header. Set its jumper to
 **3.3 V** (the L9637D is happy at 3.3 V, no level shifter needed).
 
-- [MikroE product page](https://www.mikroe.com/iso-9141-click)
+- [MikroE product page — ISO 9141 Click (L9637D013TR)](https://www.mikroe.com/iso-9141-click)
 
 For older BMW chassis you'll also want a **20-pin-to-OBD-II adapter
 cable** so you can reach the under-bonnet diagnostic socket.

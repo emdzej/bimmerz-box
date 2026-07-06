@@ -163,9 +163,10 @@ Any breakout with the right transceiver IC works. What we've bench-
 tested:
 
 - **K-line**: MikroE [*ISO 9141 Click*](https://www.mikroe.com/iso-9141-click)
-  (L9637D on a mikroBUS carrier). Pin out **TX** on the carrier goes to
-  L9637D TxD-in — that's the pin we drive from the P4's UART1 TX
-  (GPIO 20). Pin **RX** goes to L9637D RxD-out → P4 UART1 RX (GPIO 21).
+  — this is the **L9637D013TR** breakout board (ST L9637D in SO-8 on a
+  mikroBUS carrier). Pin **TX** on the carrier goes to L9637D TxD-in —
+  that's the pin we drive from the P4's UART1 TX (GPIO 20). Pin **RX**
+  goes to L9637D RxD-out → P4 UART1 RX (GPIO 21).
 - **CAN**: any TJA1051T/3 breakout (SparkFun, generic Waveshare). The
   `S` pin is silent-mode select — the firmware drives it low to bring
   the transceiver out of standby on `/rpc/can/0` open, and high after

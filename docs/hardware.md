@@ -137,7 +137,7 @@ coding workflows without external tooling.
 
 ### 6.1 K-line front-end
 
-- One **L9637D** transceiver (BMW-grade, ISO 9141-2 / KWP2000 timings, integrated slew control, ±60 V bus protection).
+- One **[L9637D013TR](https://www.st.com/en/automotive-analog-and-power/l9637.html)** transceiver (ST L9637D in SO-8 automotive-grade tape-and-reel; BMW-grade, ISO 9141-2 / KWP2000 timings, integrated slew control, ±60 V bus protection).
 - Output routed through a **TMUX1208** quad SPST analog switch (only 2 of 4 channels used; remaining 2 footprint-reserved).
 - Independent GPIOs gate channels 1 (pin 7) and 2 (pin 8). Three operating modes:
   - **Pin 7 only** — F/G chassis or known-pin-7 ECUs.
@@ -366,7 +366,7 @@ USB-C does **not** carry diagnostic data — all client interaction is over Wi-F
 | Wi-Fi co-processor | ESP32-C6-MINI-1 | 1 | 2.00 |
 | Ethernet PHY | LAN8720A | 1 | 1.50 |
 | RJ45 magjack | HR911105A (or equivalent) | 1 | 0.50 |
-| K-line transceiver | L9637D (SO-8) | 1 | 0.70 |
+| K-line transceiver | L9637D013TR (ST L9637D, SO-8) | 1 | 0.70 |
 | K-line switch | TMUX1208 (quad SPST) | 1 | 0.60 |
 | Logic level shifter | 74LVC2T45 | 1 | 0.20 |
 | Interlock gate | 74LVC1G08 (AND) | 1 | 0.07 |

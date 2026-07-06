@@ -18,7 +18,8 @@ installer, no cable on the laptop, no Windows VM.
 - **ESP32-C6** companion radio — Wi-Fi access point + BLE, talks to the
   P4 over SDIO (esp_hosted).
 - **Dual TJA1051T** high-speed CAN transceivers (PT-CAN + F-CAN).
-- **L9637D** K-line transceiver for older DS2 / KWP2000 ECUs.
+- **L9637D013TR** (ST L9637D, SO-8 automotive-grade) K-line
+  transceiver for older DS2 / KWP2000 ECUs.
 - **SD card** holding the web apps, BMW DATEN-disk SGBDs, and trace logs.
 - **Dual 7 MB OTA partitions** for live firmware updates over Wi-Fi;
   USB-MSC mode for offline SD content drop-in.

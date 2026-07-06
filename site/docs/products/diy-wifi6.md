@@ -31,13 +31,15 @@ is confirmed via the built-in `klineWireTest` RPC.
 
 ### K-line transceiver
 
-**MikroE ISO 9141 Click** (L9637D on a mikroBUS carrier) is what the
-bench rig uses. This board has no mikroBUS header, so you'll wire the
-Click to the WiFi6 devkit's header with jumpers rather than plugging
-it in. Any generic L9637D breakout works the same way.
+**MikroE ISO 9141 Click** — the **L9637D013TR** breakout board (ST
+L9637D in SO-8 automotive-grade, mounted on a mikroBUS carrier). This
+is what the bench rig uses. The WiFi6 devkit has no mikroBUS header,
+so you'll wire the Click to the devkit's header with jumpers rather
+than plugging it in. Any generic L9637D013TR breakout works the same
+way.
 
-- [MikroE product page](https://www.mikroe.com/iso-9141-click) — set
-  the on-board jumper to **3.3 V logic**.
+- [MikroE product page — ISO 9141 Click (L9637D013TR)](https://www.mikroe.com/iso-9141-click)
+  — set the on-board jumper to **3.3 V logic**.
 
 ### CAN transceiver
 
