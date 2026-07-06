@@ -41,11 +41,16 @@ it in. Any generic L9637D breakout works the same way.
 
 ### CAN transceiver
 
-Any **TJA1051T/3** breakout with a 3.3 V logic side. One transceiver
-covers the D-CAN pair (OBD pins 6 / 14) that classic BMW chassis
-use for OBD-II.
+Any **TJA1051T/3** breakout that breaks out both **Vcc** and **VIO**
+as separate pins. The /3 variant is a split-supply part: **Vcc** is
+5 V (bus-side), **VIO** is 3.3 V (logic-side, tied to the MCU's I/O
+rail). One transceiver covers the D-CAN pair (OBD pins 6 / 14) that
+classic BMW chassis use for OBD-II.
 
-- Cheap generic modules from AliExpress / Adafruit / MikroE all work.
+- Cheap generic TJA1051T/3 modules from AliExpress / Adafruit /
+  MikroE all work — verify Vcc and VIO are separately accessible
+  before ordering. Modules that hard-tie VIO to Vcc (i.e. run the
+  logic side at 5 V) will drive RXD at 5 V, out of spec for the P4.
 - The `S` (silent-mode select) pin needs to be driven — the firmware
   handles this from `/rpc/can/0` open. Don't leave it floating.
 
@@ -67,19 +72,24 @@ The board runs off 5 V. From the OBD-II port's always-live 12 V on
 pin 16 you have two options:
 
 - **Automotive 12 V → 5 V buck converter** — LM2596, MP1584, or any
-  cheap generic module rated ≥1 A. Feed 5 V into the board's **VBUS**
-  header pin (top-right of the header field, next to VSYS / GND / EN /
-  3V3). Do **not** feed the board raw 12 V.
+  cheap generic module rated ≥1 A. Feed 5 V into the board's **VSYS**
+  header pin (top-right of the header field, next to VBUS / GND / EN /
+  3V3). Do **not** feed the board raw 12 V, and do **not** feed the
+  buck's output into VBUS — that pin is the USB-side 5 V rail sourced
+  from the USB-C host. VSYS is the board's own 5 V input to its
+  on-board 3.3 V regulator.
 - **12 V-compatible USB-C car charger** — trim the USB cable, solder
-  to VBUS / GND. Simpler mechanically at the cost of one dead cable.
+  to **VSYS + GND** (same reasoning). Simpler mechanically at the cost
+  of one dead cable.
 
 Fuse the OBD +12 V wire with an inline 1 A fast-blow. The rig draws
 ~280 mA peak at 12 V input — a short in the wiring would otherwise
 burn vehicle wiring, not the fuse.
 
 **Bench testing** — skip the OBD-II side and plug the board's USB-C
-into a laptop. VBUS is bridged internally, so the board powers up on
-laptop 5 V and you can flash / monitor at the same time.
+into a laptop. USB-C supplies 5 V on **VBUS**, the board powers up on
+laptop 5 V, and you can flash + monitor at the same time. When you
+switch to the in-car buck, disconnect USB and feed VSYS instead.
 
 ### Optional
 
@@ -97,16 +107,16 @@ The relevant tables:
 
 ### GPIO ↔ transceiver
 
-| Board pin      | Function               | Wire to                              |
-|----------------|------------------------|--------------------------------------|
-| GPIO **20**    | K-line UART1 **TX**    | L9637D TxD-in                        |
-| GPIO **21**    | K-line UART1 **RX**    | L9637D RxD-out                       |
-| GPIO **33**    | CAN0 TWAI **TX**       | TJA1051 TXD                          |
-| GPIO **32**    | CAN0 TWAI **RX**       | TJA1051 RXD                          |
-| GPIO **27**    | CAN0 STBY (**S**)      | TJA1051 S (silent, active-high)      |
-| **VBUS**       | 5 V input              | Buck converter 5 V output            |
-| **GND**        | 0 V                    | Buck GND, both transceivers' GND, OBD pins 4/5 |
-| **3V3**        | 3.3 V logic rail       | Both transceivers' Vcc (logic side)  |
+| Board pin      | Function                          | Wire to                                                                       |
+|----------------|-----------------------------------|-------------------------------------------------------------------------------|
+| GPIO **20**    | K-line UART1 **TX**               | L9637D TxD-in                                                                 |
+| GPIO **21**    | K-line UART1 **RX**               | L9637D RxD-out                                                                |
+| GPIO **33**    | CAN0 TWAI **TX**                  | TJA1051T/3 TXD                                                                |
+| GPIO **32**    | CAN0 TWAI **RX**                  | TJA1051T/3 RXD                                                                |
+| GPIO **27**    | CAN0 STBY (**S**)                 | TJA1051T/3 S (silent, active-high)                                            |
+| **VSYS**       | 5 V system input                  | Buck converter 5 V output → **TJA1051T/3 Vcc**. **Not** VBUS — that's USB-side. |
+| **3V3**        | 3.3 V logic rail                  | **TJA1051T/3 VIO** *and* **L9637D Vcc** (logic-side supply on both).           |
+| **GND**        | 0 V                               | Buck GND, both transceivers' GND, OBD pins 4/5                                |
 
 > **Naming gotcha.** On this board the K-line pin labels follow the
 > L9637D **datasheet** (TxD = the transceiver's *input*, comes from
@@ -126,10 +136,24 @@ The relevant tables:
 |  14     | CAN-L         | TJA1051 CANL                  |
 |  16     | +12 V (KL30)  | Buck converter input (fused)  |
 
-L9637D transceiver **Vs** (12 V supply on the bus side) goes to the
-same fused +12 V feed as the buck — the L9637D needs vehicle 12 V to
-drive K-line low. Without it, K-line stays idle-high and the ECU never
-hears the box.
+The L9637D needs **two** supplies:
+
+- **Vs** (bus-side, 12 V) — tie to the same fused +12 V feed as the
+  buck. Without vehicle 12 V here the transceiver can't drive K-line
+  low; the bus stays idle-high and the ECU never hears the box.
+- **Vcc** (logic-side, 3.3 V) — tie to the WiFi6 board's **3V3** pin.
+  Without it the RxD output has no supply and the P4 can't read the
+  bus. On the MikroE ISO 9141 Click, the on-board jumper selects
+  between 3.3 V and 5 V for this pin — set it to **3.3 V**.
+
+The TJA1051T/3 needs **two** supplies as well:
+
+- **Vcc** (5 V) — tie to VSYS on the WiFi6 board (fed by the buck).
+- **VIO** (3.3 V) — tie to the WiFi6 board's **3V3** pin. This is the
+  I/O reference for TXD / RXD / S — leave it floating (or tied to
+  Vcc) and RXD swings to 5 V, which is out of spec for the P4's
+  3.3 V-only GPIOs. On split-supply TJA1051T/3 breakouts this is a
+  distinct pin from Vcc; verify against your breakout's silkscreen.
 
 ### Chassis-specific K-line routing
 

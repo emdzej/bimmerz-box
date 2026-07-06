@@ -26,7 +26,7 @@ see [`hardware.md`](hardware.md).
                                                               │   Waveshare ESP32-P4-WiFi6   │
                                                               │              Devkit          │
    pin 16 (+12 V, always live)  ────► [inline fuse ~1 A]      │                              │
-        │                              │                      │  VBUS ◄── 5 V ───┐           │
+        │                              │                      │  VSYS ◄── 5 V ───┐           │
         │                              ▼                      │                  │           │
         │                       ┌──────────────┐  5 V, ~2 A   │  GND  ◄──────────┼───┐       │
         │                       │  12→5 V buck │──────────────►                  │   │       │
@@ -39,23 +39,23 @@ see [`hardware.md`](hardware.md).
         ▼                              ▼                      └──────────────────┼───┼──┼──┼─┼──┼──┼──┘
    pin 4/5 (chassis / signal GND) ───► common GND rail ───────────────────────►  │   │  │  │ │  │  │
                                                                                  │   │  │  │ │  │  │
-                                              ┌─── +12 V (from fused OBD 16) ────┘   │  │  │ │  │  │
-                                              │  ┌─── GND ─────────────────────────► │  │  │ │  │  │
-                                              │  │                                   │  │  │ │  │  │
-                                              ▼  ▼                                   │  │  │ │  │  │
-   pin 7 (K-line) ◄─────────────────►  ┌────────────────┐  L9637D RxD-out  ──────────┼──┘  │ │  │  │
-                                       │    L9637D      │  L9637D TxD-in   ◄─────────┘     │ │  │  │
-                                       │ (K-line xcvr)  │                                  │ │  │  │
-                                       └────────────────┘                                  │ │  │  │
-                                                                                           │ │  │  │
-                                              ┌─── +5 V (from buck) ─────────────────────► │ │  │  │
-                                              │  ┌─── GND ───────────────────────────────► │ │  │  │
-                                              │  │                                         │ │  │  │
-                                              ▼  ▼                                         │ │  │  │
-   pin 6  (CAN-H, D-CAN) ◄──────────►  ┌────────────────┐  TJA1051 TXD  ◄──────────────────┘ │  │  │
-   pin 14 (CAN-L, D-CAN) ◄──────────►  │    TJA1051T/3  │  TJA1051 RXD  ────────────────────►│  │  │
-                                       │  (CAN xcvr)    │  TJA1051 S    ◄────────────────────┘  │  │
-                                       └────────────────┘                                       │  │
+   pin 7 (K-line) ◄─────────────────►  ┌────────────────┐  L9637D RxD-out ───────────┘   │  │ │  │  │
+                                       │    L9637D      │  L9637D TxD-in  ◄──────────────┘  │ │  │  │
+                                       │ (K-line xcvr)  │                                   │ │  │  │
+                                       │ Vs=+12V (fused │                                   │ │  │  │
+                                       │  OBD pin 16)   │                                   │ │  │  │
+                                       │ Vcc=+3.3V (3V3)│                                   │ │  │  │
+                                       │ GND=common     │                                   │ │  │  │
+                                       └────────────────┘                                   │ │  │  │
+                                                                                            │ │  │  │
+   pin 6  (CAN-H, D-CAN) ◄──────────►  ┌────────────────┐  TJA1051 TXD  ◄───────────────────┘ │  │  │
+   pin 14 (CAN-L, D-CAN) ◄──────────►  │   TJA1051T/3   │  TJA1051 RXD  ─────────────────────►│  │  │
+                                       │  (CAN xcvr)    │  TJA1051 S    ◄─────────────────────┘  │  │
+                                       │ Vcc=+5V (VSYS  │                                        │  │
+                                       │  from buck)    │                                        │  │
+                                       │ VIO=+3.3V (3V3)│                                        │  │
+                                       │ GND=common     │                                        │  │
+                                       └────────────────┘                                        │  │
                                                                                                 │  │
                                               (unused wires from board header ─────────────────►│  │
                                                 to spare GPIOs / SD slot / debug UART)          │  │
@@ -63,7 +63,9 @@ see [`hardware.md`](hardware.md).
    USB-C on the board is only needed for:                                                       │  │
      - initial flash from a host PC (see README §Flash prebuilt binaries)                       │  │
      - console monitoring via idf.py monitor                                                    │  │
-   Once the box is in the car, VBUS is powered from the buck and USB-C stays disconnected.      │  │
+   Once the box is in the car, VSYS is fed from the buck and USB-C stays disconnected.          │  │
+   (VBUS is the USB-side 5 V — sourced from the host when USB-C is plugged. VSYS is             │  │
+    the board's 5 V system rail into the on-board 3.3 V regulator — feed the buck here.)        │  │
 ```
 
 ## OBD-II pin usage
@@ -115,9 +117,9 @@ From `firmware/components/board/include/boards/waveshare_p4_wifi6.h`:
 |-------------------|------|--------------------------------------|
 | K-line UART1 TX   |  20  | L9637D TxD-in                        |
 | K-line UART1 RX   |  21  | L9637D RxD-out                       |
-| CAN0 TWAI TX      |  33  | TJA1051 TXD                          |
-| CAN0 TWAI RX      |  32  | TJA1051 RXD                          |
-| CAN0 STBY (S)     |  27  | TJA1051 S (silent, active-high)      |
+| CAN0 TWAI TX      |  33  | TJA1051T/3 TXD                       |
+| CAN0 TWAI RX      |  32  | TJA1051T/3 RXD                       |
+| CAN0 STBY (S)     |  27  | TJA1051T/3 S (silent, active-high)   |
 
 > **Naming gotcha** — on this board the K-line pin labels follow the
 > **L9637D datasheet** (TxD = the transceiver's input, comes from the
@@ -125,13 +127,23 @@ From `firmware/components/board/include/boards/waveshare_p4_wifi6.h`:
 > TWAI RX line). Don't assume the two conventions match when hand-
 > wiring; see the comment block in the header file.
 
+## Transceiver power / logic rails
+
+| Board pin | Supplies                                          | Notes                                                                       |
+|-----------|---------------------------------------------------|-----------------------------------------------------------------------------|
+| **VSYS**  | Buck output (5 V) → **TJA1051T/3 Vcc**            | Main transceiver supply. Also the board's own 5 V rail.                     |
+| **3V3**   | Board 3.3 V → **TJA1051T/3 VIO** + L9637D logic Vcc | The TJA1051T/3 needs VIO tied to the MCU's I/O rail (3.3 V) so TXD/RXD levels match the P4 — this is separate from its 5 V Vcc, and skipping it leaves the RXD line at 5 V logic (out of spec for the P4). |
+| **+12 V** (fused OBD 16) | **L9637D Vs** (bus-side)               | L9637D pulls K-line low against its internal 510 Ω pull-up to Vs — without 12 V here the bus stays idle and the ECU never responds. |
+| **GND**   | Common ground rail                                | Both transceivers' GND + buck GND + OBD pins 4/5. Missing this is the #1 first-power-up bug.  |
+
 ## Power notes
 
 - **Buck converter choice** — any automotive-rated 12 V → 5 V module
   rated ≥ 1 A works. The box draws ~280 mA peak at 12 V input; head-
   room accommodates SD-card write bursts and Wi-Fi TX. Common cheap
   options: LM2596 breakout, MP1584 module, or a step-down USB-A car
-  charger with the USB cable trimmed and soldered to VBUS + GND.
+  charger with the USB cable trimmed and soldered to **VSYS + GND**
+  on the board (not VBUS — that pin is the USB-side rail).
 - **Fuse the OBD +12 V feed.** Pin 16 is always live; a wiring short
   will otherwise burn the vehicle wiring, not your board's protection.
   1 A fast-blow inline covers this rig's normal draw with margin.
