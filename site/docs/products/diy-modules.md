@@ -1,4 +1,4 @@
-# DIY — from modules
+# DIY — Module DEV-KIT
 
 The lazy-but-still-DIY path. Stack ready-made dev boards and
 breakouts, wire them together, flash the same firmware that ships
@@ -10,6 +10,15 @@ breakouts won't fit in an OBD-II-sized enclosure), uglier, more
 wire-routing to think about. Same firmware, same web apps, same
 ECU communication — so if you don't mind it living in a 3D-printed
 hobby box on the passenger floor, this is the path.
+
+::: tip Two supported dev boards
+This page covers the **Waveshare ESP32-P4 Module DEV-KIT** (SoM +
+carrier, on-board Ethernet PHY, mikroBUS header). If you prefer the
+smaller single-board **[Waveshare ESP32-P4-WiFi6 Devkit](./diy-wifi6)**
+(no Ethernet PHY, no mikroBUS, but on-board C6 Wi-Fi 6) — the firmware
+supports both as parallel targets. See the
+[WiFi6 devkit DIY page](./diy-wifi6) for that variant.
+:::
 
 ::: warning Draft
 The exact parts list is still being finalised. Treat the table
@@ -30,11 +39,12 @@ broken out.
 - [Waveshare product page](https://www.waveshare.com/esp32-p4-module-dev-kit.htm)
   · [official docs](https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT)
 - Includes a mikroBUS-style header for click boards.
-- The successor target is the
+- The sibling supported board is the
   [Waveshare ESP32-P4-WiFi6 Devkit](https://docs.waveshare.com/ESP32-P4-WIFI6)
   (single-board variant; same C6 + SD pinmap, no Ethernet PHY). The
   firmware ships a board overlay for it too — see
-  `sdkconfig.defaults.waveshare_p4_wifi6`.
+  `sdkconfig.defaults.waveshare_p4_wifi6` and the
+  [WiFi6 devkit DIY page](./diy-wifi6).
 
 ### K-line transceiver
 

@@ -61,23 +61,29 @@
 #define BOARD_ETH_RMII_CRS_DV_GPIO    (-1)
 #define BOARD_ETH_RMII_REF_CLK_GPIO   (-1)
 
-// ---- K-line via L9637D / ISO 9141 Click (off-board bench wiring) ----------
-// Same as the Module DEV-KIT rig — identical mikroBUS / breakout
-// wiring expected.
+// ---- K-line via L9637D / ISO 9141 Click (prototype board wiring) ----------
+// Prototype board: transceiver wired to GPIO 20 / GPIO 21 on the
+// right-hand header. Direction labeled from the L9637D's own pin
+// names — user's "rx" is the L9637D RxD side (its output → MCU RX),
+// so GPIO 20 = MCU TX / GPIO 21 = MCU RX. klineWireTest against
+// the opposite mapping returned rxHigh=1/rxLow=1 (RX pin floating on
+// the transceiver's TxD input); this convention matches the L9637D
+// datasheet pin labels.
 #define BOARD_KLINE_UART_NUM          UART_NUM_1
-#define BOARD_KLINE_TX_GPIO           5
-#define BOARD_KLINE_RX_GPIO           4
+#define BOARD_KLINE_TX_GPIO           20
+#define BOARD_KLINE_RX_GPIO           21
 #define BOARD_KLINE7_EN_GPIO          (-1)
 #define BOARD_KLINE8_EN_GPIO          (-1)
 #define BOARD_LLINE_DRV_GPIO          (-1)
 #define BOARD_DOIP_ACT_GPIO           (-1)
 
 // ---- CAN (TWAI0 + TWAI1) --------------------------------------------------
-// Same bench-rig assignments as the Module DEV-KIT — TJA1051T on
-// TWAI0; second transceiver not yet wired.
+// Prototype board: TJA1051T on TWAI0, TX/RX on the right-hand header,
+// S (silent/standby, active-high) driven from GPIO 27. Second
+// transceiver not yet wired.
 #define BOARD_CAN0_TX_GPIO            33
-#define BOARD_CAN0_RX_GPIO            26
-#define BOARD_CAN0_STBY_GPIO          0
+#define BOARD_CAN0_RX_GPIO            32
+#define BOARD_CAN0_STBY_GPIO          27
 #define BOARD_CAN1_TX_GPIO            (-1)
 #define BOARD_CAN1_RX_GPIO            (-1)
 #define BOARD_CAN1_STBY_GPIO          (-1)

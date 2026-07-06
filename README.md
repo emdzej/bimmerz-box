@@ -33,6 +33,78 @@ installer, no cable on the laptop, no Windows VM.
 | [`docs/`](docs/) | Architecture: [`firmware.md`](docs/firmware.md), [`hardware.md`](docs/hardware.md), [`api.md`](docs/api.md), [`dev-board-pinout.md`](docs/dev-board-pinout.md). |
 | [`site/`](site/) | VitePress source for [box.bimmerz.app](https://box.bimmerz.app). Deployed by `.github/workflows/site-deploy.yml`. |
 
+## Flash prebuilt binaries (from GitHub releases)
+
+You don't need ESP-IDF to flash — releases ship board-specific artefacts on
+[github.com/emdzej/bimmerz-box/releases](https://github.com/emdzej/bimmerz-box/releases).
+Each release attaches four `.bin` files and a `flasher_args.json` per
+board variant (`waveshare_p4_module_dev_kit`, `waveshare_p4_wifi6`,
+`dongle`).
+
+**Prerequisites** — Python 3 and `esptool`:
+
+```sh
+pip install esptool
+```
+
+**Download the four artefacts** for your board and release (example:
+WiFi6 devkit, tag `0.1.0`):
+
+```sh
+V=0.1.0
+BOARD=waveshare_p4_wifi6
+gh release download "$V" --repo emdzej/bimmerz-box \
+  --pattern "bootloader-$BOARD-$V.bin" \
+  --pattern "partition-table-$BOARD-$V.bin" \
+  --pattern "ota_data_initial-$BOARD-$V.bin" \
+  --pattern "bimmerz_box-$BOARD-$V.bin"
+```
+
+(Or download them by hand from the release page.)
+
+**Identify the serial port**:
+
+- **macOS/Linux**: `ls /dev/cu.usbmodem*` (or `/dev/ttyUSB*` for
+  external USB-UART adapters). The WiFi6 devkit and Module DEV-KIT
+  both expose the ESP32-P4's native USB-Serial-JTAG through the
+  board's USB-C connector — flash and console share that port.
+- **Windows**: check *Device Manager → Ports (COM & LPT)* for the new
+  entry that appears when you plug in the board.
+
+**Flash** (offsets are fixed by the partition table, identical across
+variants):
+
+```sh
+python -m esptool --chip esp32p4 -p /dev/cu.usbmodem<...> -b 460800 \
+  --before default_reset --after hard_reset write_flash \
+  --flash_mode dio --flash_size 16MB --flash_freq 80m \
+  0x2000  "bootloader-$BOARD-$V.bin" \
+  0x8000  "partition-table-$BOARD-$V.bin" \
+  0x10000 "ota_data_initial-$BOARD-$V.bin" \
+  0x20000 "bimmerz_box-$BOARD-$V.bin"
+```
+
+The `flasher_args-$BOARD-$V.json` attached to the release contains
+the same offsets — if you'd rather drive `esptool` from the JSON:
+
+```sh
+python -m esptool --chip esp32p4 -p /dev/cu.usbmodem<...> \
+  write_flash "@flasher_args-$BOARD-$V.json"
+```
+
+**Verify** — join the `BimmerzBox` Wi-Fi AP (open, no password) and
+open `http://172.16.7.1/settings/`. The *Firmware* card shows the
+running image's version + git hash.
+
+**Subsequent updates** — after the first flash, do OTA updates through
+the settings UI (see *Updating a live dongle* below); no cable needed.
+
+### WiFi6 devkit — physical setup
+
+For wiring the WiFi6 devkit to an OBD-II socket (K-line, CAN, and
+12 V power via a step-down converter), see
+[`docs/wifi6-prototype.md`](docs/wifi6-prototype.md).
+
 ## Build the firmware
 
 ```sh

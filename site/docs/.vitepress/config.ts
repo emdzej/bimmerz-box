@@ -41,7 +41,8 @@ export default defineConfig({
         text: "Get one",
         items: [
           { text: "Overview", link: "/products/" },
-          { text: "DIY — from modules", link: "/products/diy-modules" },
+          { text: "DIY — Module DEV-KIT", link: "/products/diy-modules" },
+          { text: "DIY — WiFi6 devkit", link: "/products/diy-wifi6" },
           { text: "DIY — custom PCB", link: "/products/diy-pcb" },
           { text: "Ready-to-ship", link: "/products/ready" },
         ],
@@ -63,7 +64,8 @@ export default defineConfig({
           text: "DIY",
           items: [
             { text: "Pick your DIY path", link: "/products/diy" },
-            { text: "From modules", link: "/products/diy-modules" },
+            { text: "Module DEV-KIT", link: "/products/diy-modules" },
+            { text: "WiFi6 devkit", link: "/products/diy-wifi6" },
             { text: "Custom PCB", link: "/products/diy-pcb" },
           ],
         },

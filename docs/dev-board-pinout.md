@@ -1,12 +1,14 @@
 # Waveshare ESP32-P4 Module DEV-KIT — Pinout
 
 GPIO assignments used by the firmware on the Waveshare ESP32-P4 Module
-DEV-KIT (the dev board the firmware is currently developed against —
+DEV-KIT (one of the two dev boards the firmware is developed against —
 [Waveshare docs](https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT)).
-The successor target is the
+The other supported board is the
 [ESP32-P4-WiFi6 Devkit](https://docs.waveshare.com/ESP32-P4-WIFI6) —
 same SDIO + SD-card pin map, no Ethernet PHY (see
-[`boards/waveshare_p4_wifi6.h`](../firmware/components/board/include/boards/waveshare_p4_wifi6.h)).
+[`boards/waveshare_p4_wifi6.h`](../firmware/components/board/include/boards/waveshare_p4_wifi6.h)
+for its pin map and [`wifi6-prototype.md`](wifi6-prototype.md) for the
+OBD-II wiring rig).
 
 Definitions live in
 [`firmware/components/board/include/boards/waveshare_p4_module_dev_kit.h`](../firmware/components/board/include/boards/waveshare_p4_module_dev_kit.h).
@@ -240,6 +242,7 @@ external driver's level at reset matches the strap default.
 ## Cross-reference
 
 - **WiFi6 Devkit pin map** — [`boards/waveshare_p4_wifi6.h`](../firmware/components/board/include/boards/waveshare_p4_wifi6.h)
+- **WiFi6 Devkit prototype rig** (OBD-II wiring + 12 V step-down + transceiver hookup) — [`wifi6-prototype.md`](wifi6-prototype.md)
 - **Dongle PCB pin map** — [`boards/dongle.h`](../firmware/components/board/include/boards/dongle.h)
 - **Switching boards at build time** — pick one of
   `sdkconfig.defaults.waveshare_p4_module_dev_kit`,
