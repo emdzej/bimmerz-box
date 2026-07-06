@@ -14,58 +14,66 @@ see [`hardware.md`](hardware.md).
 
 ## Setup diagram
 
+Three logical blocks — OBD-II socket, the WiFi6 devkit, and the two off-board
+transceivers — connected by numbered signal groups.
+
 ```
-                                                        ┌──────────────────────────┐
-                                                        │   BimmerzBox AP (Wi-Fi)  │
-                                                        │   172.16.7.1  (browser)  │
-                                                        └────────────┬─────────────┘
-                                                                     │ Wi-Fi 6
-                                                                     │ (onboard C6)
-                                                                     ▼
-   OBD-II socket (looking into the car's DLC)                 ┌──────────────────────────────┐
-                                                              │   Waveshare ESP32-P4-WiFi6   │
-                                                              │              Devkit          │
-   pin 16 (+12 V, always live)  ────► [inline fuse ~1 A]      │                              │
-        │                              │                      │  VSYS ◄── 5 V ───┐           │
-        │                              ▼                      │                  │           │
-        │                       ┌──────────────┐  5 V, ~2 A   │  GND  ◄──────────┼───┐       │
-        │                       │  12→5 V buck │──────────────►                  │   │       │
-        │                       │  (LM2596 /   │              │  GPIO 20 ────────┼───┼──┐    │
-        │                       │   MP1584 /   │              │  GPIO 21 ────────┼───┼──┼──┐ │
-        │                       │   automotive │              │                  │   │  │  │ │
-        │                       │   USB brick) │              │  GPIO 33 ────────┼───┼──┼──┼─┼──┐
-        │                       └──────┬───────┘              │  GPIO 32 ────────┼───┼──┼──┼─┼──┼──┐
-        │                              │ GND                  │  GPIO 27 ────────┼───┼──┼──┼─┼──┼──┼──┐
-        ▼                              ▼                      └──────────────────┼───┼──┼──┼─┼──┼──┼──┘
-   pin 4/5 (chassis / signal GND) ───► common GND rail ───────────────────────►  │   │  │  │ │  │  │
-                                                                                 │   │  │  │ │  │  │
-   pin 7 (K-line) ◄─────────────────►  ┌────────────────┐  L9637D RxD-out ───────────┘   │  │ │  │  │
-                                       │    L9637D      │  L9637D TxD-in  ◄──────────────┘  │ │  │  │
-                                       │ (K-line xcvr)  │                                   │ │  │  │
-                                       │ Vs=+12V (fused │                                   │ │  │  │
-                                       │  OBD pin 16)   │                                   │ │  │  │
-                                       │ Vcc=+3.3V (3V3)│                                   │ │  │  │
-                                       │ GND=common     │                                   │ │  │  │
-                                       └────────────────┘                                   │ │  │  │
-                                                                                            │ │  │  │
-   pin 6  (CAN-H, D-CAN) ◄──────────►  ┌────────────────┐  TJA1051 TXD  ◄───────────────────┘ │  │  │
-   pin 14 (CAN-L, D-CAN) ◄──────────►  │   TJA1051T/3   │  TJA1051 RXD  ─────────────────────►│  │  │
-                                       │  (CAN xcvr)    │  TJA1051 S    ◄─────────────────────┘  │  │
-                                       │ Vcc=+5V (VSYS  │                                        │  │
-                                       │  from buck)    │                                        │  │
-                                       │ VIO=+3.3V (3V3)│                                        │  │
-                                       │ GND=common     │                                        │  │
-                                       └────────────────┘                                        │  │
-                                                                                                │  │
-                                              (unused wires from board header ─────────────────►│  │
-                                                to spare GPIOs / SD slot / debug UART)          │  │
-                                                                                                │  │
-   USB-C on the board is only needed for:                                                       │  │
-     - initial flash from a host PC (see README §Flash prebuilt binaries)                       │  │
-     - console monitoring via idf.py monitor                                                    │  │
-   Once the box is in the car, VSYS is fed from the buck and USB-C stays disconnected.          │  │
-   (VBUS is the USB-side 5 V — sourced from the host when USB-C is plugged. VSYS is             │  │
-    the board's 5 V system rail into the on-board 3.3 V regulator — feed the buck here.)        │  │
+   ┌───────────────────────┐              ┌──────────────────────┐
+   │   OBD-II socket       │              │   12 → 5 V buck      │
+   │   (car's DLC)         │              │   LM2596 / MP1584 /  │
+   │                       │              │   automotive USB     │
+   │   pin 16  (+12 V) ────┼──[fuse 1A]──►│   Vin                │
+   │   pin 4/5 (GND)   ────┼───────[GND]─►│   GND                │
+   │                       │              │                      │
+   │   pin 7   (K-line)    │              │        Vout: +5 V ┐  │
+   │   pin 6   (CAN-H)     │              └───────────────────┼──┘
+   │   pin 14  (CAN-L)     │                                  │
+   └───────────────────────┘                                  │
+                                                              │
+                                                              ▼
+   ┌───────────────────────────────────────────────────────────────┐
+   │            Waveshare ESP32-P4-WiFi6 Devkit                    │
+   │            (onboard C6 Wi-Fi 6 / BT 5.4)                      │
+   │                                                               │
+   │   Wi-Fi 6 AP → http://172.16.7.1/ (browser)                   │
+   │                                                               │
+   │   VSYS  ◄── 5 V from buck                                     │
+   │   GND   ◄── common GND rail                                   │
+   │   3V3   ── on-board 3.3 V rail (out) ── to xcvr logic supplies│
+   │   VBUS  ── USB-C side 5 V (host power only, leave open in-car)│
+   │                                                               │
+   │   UART1 (K-line):   GPIO 20 TX  ─────►  L9637D  TxD-in        │
+   │                     GPIO 21 RX  ◄─────  L9637D  RxD-out       │
+   │                                                               │
+   │   TWAI0 (D-CAN):    GPIO 33 TX  ─────►  TJA1051T/3  TXD       │
+   │                     GPIO 32 RX  ◄─────  TJA1051T/3  RXD       │
+   │                     GPIO 27 S   ─────►  TJA1051T/3  S (silent)│
+   └───────────────────────────────────────────────────────────────┘
+
+   ┌────────────────────────────┐          ┌────────────────────────────┐
+   │     L9637D013TR            │          │       TJA1051T/3           │
+   │     (K-line, ST SO-8)      │          │     (D-CAN, split supply)  │
+   │                            │          │                            │
+   │   Vs   ◄── +12 V (fused    │          │   Vcc  ◄── 5 V (VSYS/buck) │
+   │            OBD pin 16)     │          │   VIO  ◄── 3.3 V (board)   │
+   │   Vcc  ◄── 3.3 V (board)   │          │   GND  ◄── common          │
+   │   GND  ◄── common          │          │   TXD  ◄── GPIO 33         │
+   │   TxD  ◄── GPIO 20         │          │   RXD  ──► GPIO 32         │
+   │   RxD  ──► GPIO 21         │          │   S    ◄── GPIO 27         │
+   │   K    ◄──►  OBD pin 7     │          │   CANH ◄──►  OBD pin 6     │
+   │            (chassis-       │          │   CANL ◄──►  OBD pin 14    │
+   │             specific: see  │          │                            │
+   │             pin 8 notes)   │          │                            │
+   └────────────────────────────┘          └────────────────────────────┘
+
+   USB-C is only for initial flash (§Flash prebuilt binaries) and
+   console monitoring via `idf.py monitor`. Once the box is in the
+   car, VSYS is fed from the buck and USB-C stays disconnected.
+
+   VBUS vs VSYS gotcha:
+     - VBUS = USB-side 5 V, sourced from the host when USB-C is plugged.
+     - VSYS = the board's own 5 V system rail into its 3.3 V regulator.
+   Feed the buck's 5 V output into VSYS, never VBUS.
 ```
 
 ## OBD-II pin usage
