@@ -13,6 +13,27 @@ isn't clean).
 
 ## [Unreleased]
 
+_(no changes yet)_
+
+## [0.2.0] — 2026-07-06
+
+Post-0.1.0 correctness pass on the firmware, plus a full bring-up +
+docs pass for the WiFi6 devkit prototype rig.
+
+### Hardware — WiFi6 devkit bring-up
+
+- **Bench-verified pin map** in
+  [`boards/waveshare_p4_wifi6.h`](firmware/components/board/include/boards/waveshare_p4_wifi6.h).
+  K-line UART1 lands on **GPIO 20 / 21** (matching the L9637D
+  datasheet's TxD/RxD pin naming — TxD is the transceiver's *input*,
+  driven from the MCU's TX). CAN0 TWAI lands on **GPIO 33 / 32 / 27**
+  (TX / RX / STBY-S) with the standard MCU-side naming CAN uses. The
+  header comments the CAN-vs-K-line naming asymmetry so the next
+  peripheral doesn't repeat the same swap.
+- **Loop verified via** the built-in `klineWireTest` RPC on
+  `/rpc/ediabasx`: `rxWhenTxHigh=1, rxWhenTxLow=0, loopOk=true`
+  against a real L9637D + 12 V bus supply.
+
 ### Fixed
 
 Correctness pass over the firmware in response to a post-0.1.0 code
@@ -63,7 +84,41 @@ review. Each fix individually links to its CR item number.
   substring scan stays honest under future IDF changes. App and
   dashboard URIs never contain `%` literals in practice.
 
-### Deferred (not in this pre-release window)
+### Documentation
+
+- **New WiFi6 prototype rig guide** at
+  [`docs/wifi6-prototype.md`](docs/wifi6-prototype.md) — ASCII setup
+  diagram (WiFi6 devkit + fused +12 V → 5 V buck + L9637D + TJA1051 +
+  OBD-II socket), per-pin wiring tables, and chassis-specific K-line
+  pin-7-vs-pin-8 routing (solder-jumper or SPDT-switch, with the
+  pin-8 back-feed hazard called out).
+- **New DIY path on the site** for the WiFi6 devkit
+  ([`site/docs/products/diy-wifi6.md`](site/docs/products/diy-wifi6.md))
+  with nav + sidebar entries in `.vitepress/config.ts`. The existing
+  "DIY — from modules" page is retitled "DIY — Module DEV-KIT" and
+  cross-linked; the DIY hub table grows from two paths to three.
+- **New "Flash prebuilt binaries (from GitHub releases)" section** in
+  the top-level [`README.md`](README.md) — `esptool`-based
+  instructions for the WiFi6 board (`bootloader-*`, `partition-table-*`,
+  `ota_data_initial-*`, `bimmerz_box-*.bin` from any release), plus a
+  shorter `@flasher_args.json` invocation.
+- **SD-card path alignment across all docs and firmware comments.**
+  The firmware serves sibling apps out of `/sdcard/apps/<slug>/` and
+  the root-namespace dashboard out of `/sdcard/sys/dashboard/`
+  (`APPS_ROOT` / `SYS_ROOT` / `HUB_APP` in
+  `firmware/components/http_static/src/http_static.c`); docs and code
+  comments that still said `/sdcard/web/…` are reconciled. Touched
+  `docs/api.md`, `docs/firmware.md`, `dashboard/README.md`,
+  `site/docs/guide/{apps,index}.md`, `site/docs/products/diy.md`, and
+  the `http_static` header + source comments.
+- **New "Getting the apps onto the SD card" section** in the site
+  user guide ([`site/docs/guide/apps.md`](site/docs/guide/apps.md))
+  with a per-slug table pointing users at each sibling repo
+  (`ediabasx`, `inpax`, `ncsx`, `nfsx`, `tunex`) and the matching
+  `/sdcard/apps/<slug>/` deploy target. Build steps live in each
+  repo's README — the box docs link out rather than duplicate them.
+
+### Deferred (not in this release)
 
 - **`transport_kline` static state under a mutex (CR #9).** The
   global `s_session` / `s_last_response_ms` would race the moment
@@ -220,5 +275,6 @@ diagnostic work; all are tracked for follow-up.
   research, hobby use. Commercial use requires a separate licence.
 - `.github/FUNDING.yml` — GitHub Sponsors + Buy Me a Coffee.
 
-[Unreleased]: https://github.com/emdzej/bimmerz-box/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/emdzej/bimmerz-box/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/emdzej/bimmerz-box/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/emdzej/bimmerz-box/releases/tag/0.1.0
