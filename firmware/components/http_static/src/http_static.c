@@ -376,7 +376,7 @@ static esp_err_t handle_hub(httpd_req_t *req) {
 //      the client has tapped Continue), or 302 to /welcome (otherwise)
 //   2. /welcome[.html] → embedded captive welcome page
 //   3. /data/* → SD-card vehicle data (read-only)
-//   4. /<known-app>/* (real dir under /sdcard/web/, not "dashboard") → app handler
+//   4. /<known-app>/* (real dir under /sdcard/apps/, not "dashboard") → app handler
 //   5. Anything else → hub at /
 static esp_err_t handle_any(httpd_req_t *req) {
     if (!uri_is_safe(req->uri)) {

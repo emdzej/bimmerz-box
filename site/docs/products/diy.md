@@ -39,8 +39,9 @@ construction differs.
 - **Firmware** — same `bimmerz_box.bin` from the firmware repo. Pick
   the board overlay for your target (`waveshare_p4_module_dev_kit`,
   `waveshare_p4_wifi6`, or `dongle`); all three flash the same way.
-- **Web apps** — same SD-card layout under `/sdcard/web/<app>/`
-  and `/sdcard/data/<app>/`.
+- **Web apps** — same SD-card layout: sibling apps under
+  `/sdcard/apps/<slug>/`, dashboard hub at `/sdcard/sys/dashboard/`,
+  read-only vehicle data under `/sdcard/data/`.
 - **OTA + updates** — same `/settings/` upload form, same USB-MSC SD
   drop-in mechanism.
 

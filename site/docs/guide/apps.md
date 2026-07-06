@@ -2,8 +2,10 @@
 
 The dongle ships with the bimmerz toolkit installed on the SD card.
 Each tool is a single-page web app served from
-`/sdcard/web/<app>/`. The dashboard shows a tile for each installed
-app — greyed out for ones whose files aren't on the card.
+`/sdcard/apps/<slug>/`. The dashboard hub itself lives at
+`/sdcard/sys/dashboard/` and is served at `/`. The dashboard shows a
+tile for each installed app — greyed out for ones whose files aren't
+on the card.
 
 ## EDIABASX — diagnostic jobs
 
@@ -89,6 +91,36 @@ scalars, saves a modified image you can re-flash with NFSX.
 
 Pure editor — the dongle just serves it. The interesting work
 happens in your browser.
+
+## Getting the apps onto the SD card
+
+Ready-to-ship dongles ship with the apps pre-loaded. If you're
+building a DIY box (or replacing / updating an app on an existing
+one), each app is built from its own repository — see that repo's
+README for the exact build steps.
+
+| Slug           | Repo                                                                            | Deploys to                        |
+|----------------|---------------------------------------------------------------------------------|-----------------------------------|
+| `dashboard`    | [`emdzej/bimmerz-box`](https://github.com/emdzej/bimmerz-box/tree/main/dashboard) *(this repo)* | `/sdcard/sys/dashboard/`          |
+| `ediabasx`     | [`emdzej/ediabasx`](https://github.com/emdzej/ediabasx)                         | `/sdcard/apps/ediabasx/`          |
+| `inpax`        | [`emdzej/inpax`](https://github.com/emdzej/inpax)                               | `/sdcard/apps/inpax/`             |
+| `ncsx`         | [`emdzej/ncsx`](https://github.com/emdzej/ncsx)                                 | `/sdcard/apps/ncsx/`              |
+| `nfsx`         | [`emdzej/nfsx`](https://github.com/emdzej/nfsx)                                 | `/sdcard/apps/nfsx/`              |
+| `tunex`        | [`emdzej/tunex`](https://github.com/emdzej/tunex)                               | `/sdcard/apps/tunex/`             |
+
+**General shape** (verify against each repo's README before running):
+
+1. Clone the repo.
+2. `pnpm install && pnpm build` (or the equivalent — the individual
+   README will state exactly).
+3. Upload the `dist/` (or `build/`) contents to the corresponding
+   `/sdcard/...` path above, using either the settings file browser
+   or USB-MSC (see [Loading data files](#loading-data-files) below —
+   same mechanisms).
+
+The dashboard `HEAD`-probes each app slug at load time; missing apps
+render as dimmed "not installed" tiles instead of 404-ing when
+clicked.
 
 ## Loading data files
 

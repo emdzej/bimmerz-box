@@ -62,7 +62,7 @@ bimmerz-box/
 │       ├── transport_ibus/       # TH3122 driver
 │       ├── transport_doip/       # DoIP framing over lwIP
 │       ├── jsonrpc/              # JSON-RPC 2.0 dispatch + WS endpoint
-│       ├── http_static/          # SPA hosting from /sdcard/web/
+│       ├── http_static/          # SPA hosting from /sdcard/apps/ (hub at /sdcard/sys/dashboard/)
 │       ├── storage/              # SD/FATFS mount, file conventions
 │       ├── ota_manager/          # firmware + asset OTA
 │       ├── wifi_ap/              # AP bring-up via ESP-Hosted

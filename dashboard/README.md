@@ -1,8 +1,9 @@
 # dashboard
 
 Root-namespace launcher for the bimmerz-box dongle. Served by the
-firmware at `http://172.16.7.1/` from `/sdcard/web/dashboard/` (see
-`HUB_APP` in `firmware/components/http_static/src/http_static.c`).
+firmware at `http://172.16.7.1/` from `/sdcard/sys/dashboard/` (see
+`SYS_ROOT` + `HUB_APP` in
+`firmware/components/http_static/src/http_static.c`).
 
 The dashboard:
 
@@ -31,17 +32,17 @@ useful for layout work but functionally hollow.
 ## Deploy to the dongle
 
 After `pnpm build`, upload everything under `dist/` into
-`/sdcard/web/dashboard/` on the dongle. Two paths:
+`/sdcard/sys/dashboard/` on the dongle. Two paths:
 
 1. **Settings file browser** — `http://172.16.7.1/settings/`, navigate into
-   `/sdcard/web/`, create `dashboard/`, drag-drop the `dist/` contents
+   `/sdcard/sys/`, create `dashboard/`, drag-drop the `dist/` contents
    in.
 2. **`curl` against the admin file API** — quick scripted upload:
    ```bash
    cd dist
    find . -type f | while read f; do
      curl -X POST --data-binary "@$f" \
-       "http://172.16.7.1/api/files/upload?path=/sdcard/web/dashboard/${f#./}"
+       "http://172.16.7.1/api/files/upload?path=/sdcard/sys/dashboard/${f#./}"
    done
    ```
 

@@ -1,7 +1,8 @@
 #pragma once
 
 // HTTP server hosting the inpax / ncsx / nfsx / tunex / ediabasx
-// single-page apps out of /sdcard/web/. Also exposes /sdcard/data/
+// single-page apps out of /sdcard/apps/<slug>/, plus the root-namespace
+// dashboard hub out of /sdcard/sys/dashboard/. Also exposes /sdcard/data/
 // read-only at the /data/ URL prefix for SGBD / DATEN / vehicle data
 // files (consumed by the web apps via @emdzej/bimmerz-vfs). Co-listens
 // with the JSON-RPC WebSocket endpoint on port 80. See docs/firmware.md §6.

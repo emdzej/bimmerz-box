@@ -9,9 +9,9 @@ The dongle hosts a small HTTP server at `http://172.16.7.1/` on its
 own Wi-Fi AP. That server serves four kinds of thing:
 
 1. **The hub dashboard** at `/` — a grid of tiles linking to each
-   installed app.
+   installed app. Served from `/sdcard/sys/dashboard/` on the SD card.
 2. **The web apps** at `/<app>/` — each app is a single-page
-   application stored on the SD card under `/sdcard/web/<app>/`.
+   application stored on the SD card under `/sdcard/apps/<slug>/`.
    Today: `ediabasx`, `inpax`, `ncsx`, `nfsx`, `tunex`.
 3. **The admin page** at `/settings/` — system settings + an SD-card
    file browser for uploading SGBDs, web apps, and DATEN-disk files.

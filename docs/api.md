@@ -50,8 +50,8 @@ anything. Don't expose the dongle to a hostile network.
 
 | Path                  | Source                                          |
 |-----------------------|-------------------------------------------------|
-| `GET /`               | `/sdcard/web/dashboard/index.html` (the hub)    |
-| `GET /<app>/...`      | `/sdcard/web/<app>/...` if `<app>/` exists      |
+| `GET /`               | `/sdcard/sys/dashboard/index.html` (the hub)    |
+| `GET /<app>/...`      | `/sdcard/apps/<app>/...` if `<app>/` exists     |
 | `GET /<unknown>/`     | falls back to dashboard index (SPA routing)     |
 
 Routing rules:
@@ -61,9 +61,9 @@ Routing rules:
 2. If the `Host:` header doesn't match `172.16.7.1`, the request is
    rerouted via the captive flow (see below).
 3. The first path segment is matched against a real subdirectory of
-   `/sdcard/web/`. If it exists (and isn't `dashboard/`), the request
-   is served from that app's directory; otherwise the dashboard's
-   `index.html` is returned (SPA hash-routing).
+   `/sdcard/apps/`. If it exists, the request is served from that
+   app's directory; otherwise the dashboard's `index.html` (from
+   `/sdcard/sys/dashboard/`) is returned (SPA hash-routing).
 
 `Content-Type` is inferred from the file extension; common web types are
 handled (`html / css / js / mjs / json / svg / png / jpg / ico / webp /
@@ -81,7 +81,7 @@ presence without downloading bodies.
 
 Used by SPAs (e.g. ediabasx) that need to fetch BMW DATEN-disk files,
 calibration tables, etc. that live on the SD card outside the
-`/sdcard/web/` tree. Directory listings aren't exposed — clients fetch
+`/sdcard/apps/` tree. Directory listings aren't exposed — clients fetch
 files by exact path.
 
 ### Captive-portal helpers
