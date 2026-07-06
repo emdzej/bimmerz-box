@@ -77,12 +77,23 @@ breakout's logic side. Confirm the breakout's logic voltage matches
 
 - **microSD card** — 16 GB SDHC, FAT32. The dev kit has the slot.
 
-### OBD-II cable
+### OBD-II connector / cable
 
-- **OBD-II to bare wires** (or to your screw-terminal block of
-  choice). Cheap on AliExpress. You'll wire pin 6 / 14 to one CAN
-  click, pin 7 to the K-line click, pin 16 (battery +12 V) to a
-  buck converter (or USB-C PD trigger) feeding the dev kit.
+Something that plugs into the car's OBD-II socket (a 16-pin **J1962
+male** connector) with wires you can access on the other side. Two
+common ways:
+
+- **Pre-made OBD-II pigtail** — J1962 male plug + bare wires or a
+  screw-terminal block on the other end. Cheapest and most common on
+  AliExpress / Amazon / eBay. Search *"OBD-II to bare wires"* or
+  *"OBD2 pigtail"*.
+- **Bare J1962 male connector** (Molex 34825-0160, TE 1-1747844-1,
+  or generic clones) — for builders who want to solder the wires
+  directly into their enclosure.
+
+You'll wire **pin 6 / 14** to one CAN click, **pin 7** to the K-line
+click, **pin 16** (battery +12 V) to the buck / USB-C PD trigger
+feeding the dev kit, and **pin 4 or 5** to the common ground rail.
 
 ### Power
 

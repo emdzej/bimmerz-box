@@ -62,11 +62,27 @@ classic BMW chassis use for OBD-II.
 payloads before first boot — see the
 [web-apps guide](../guide/apps).
 
-### OBD-II cable
+### OBD-II connector / cable
 
-**OBD-II to bare wires** or to a screw-terminal block. You'll wire
-pin 6 / 14 (CAN), pin 7 (K-line), pin 16 (+12 V), and pin 4 or 5 (GND)
-to the corresponding board / transceiver pins.
+You need something that plugs into the car's OBD-II socket (a 16-pin
+**J1962 male** connector) with wires you can access on the other side.
+Two ways to do it:
+
+- **Pre-made OBD-II pigtail** — J1962 male plug on one end, bare
+  wires (or a screw-terminal block) on the other. Cheapest and most
+  common; ubiquitous on AliExpress / Amazon / eBay. Look for
+  *"OBD-II to bare wires"* or *"OBD2 pigtail cable"*.
+- **Bare J1962 male connector** (e.g. Molex 34825-0160, TE 1-1747844-1,
+  or generic clones) — for builders who want to solder the wires
+  directly into their enclosure. Requires crimping / soldering the
+  16 pins yourself; overkill unless you're making a custom housing.
+
+Either way, you only need to populate the pins you actually use:
+**pin 4 or 5** (GND), **pin 6 / 14** (CAN-H / CAN-L), **pin 7**
+(K-line), and **pin 16** (+12 V). The other pins can be left
+disconnected. For chassis-specific pin 8 routing, see the
+[Chassis-specific K-line routing](#chassis-specific-k-line-routing)
+section below.
 
 ### Power
 
