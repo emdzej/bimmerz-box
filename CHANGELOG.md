@@ -15,6 +15,69 @@ isn't clean).
 
 _(no changes yet)_
 
+## [0.3.0] — 2026-07-07 — httpd doesn't wedge when switching between apps
+
+Field bug: after opening two or three of ediabasx / inpax / ncsx /
+nfsx / dashx in browser tabs and closing them, the dongle's HTTP
+server became unresponsive. Curl-probing every endpoint (`/`,
+`/rpc/ediabasx`, `/rpc/uart/0`, `/settings/`, `/api/files`) returned
+either `Empty reply from server` or `Connection reset by peer` —
+TCP layer healthy, HTTPD layer wedged. Required a dongle reboot to
+recover.
+
+Three root causes, all in the httpd config:
+
+1. **Accept queue starved** — `HTTPD_DEFAULT_CONFIG()` set
+   `max_open_sockets = 7`. Every open browser tab holding a live
+   WS burns a slot; keep-alive-warmed admin-UI sockets burn more;
+   TIME_WAIT tail (LWIP `TCP_MSL = 60 s`) keeps closed sockets
+   occupying LWIP resources; once the pool fills, the httpd worker
+   can't accept a fresh socket to handle the next request. Bumped
+   to `13`, with `CONFIG_LWIP_MAX_SOCKETS=16` in sdkconfig.defaults
+   so the LWIP pool matches.
+2. **Stale `holder_fd` in `rpc_uart` / `rpc_can`** — both track a
+   single-holder-per-index arbitration. Before this release the
+   holder was only cleared on an explicit `uart.close` / `can.close`
+   from the client. A browser tab that navigated away without
+   sending it left the slot pinned to a now-dead fd; subsequent
+   `exclusive: true` opens (nfsx directmode / bootmode) failed
+   `bus_busy`, and if httpd recycled the numeric fd for a new
+   client, ownership silently transferred to a peer that never
+   called `open`. Introduced a `close_fn` in `http_static` that
+   fires on every socket close and dispatches to
+   `rpc_uart_on_socket_close(sockfd)` +
+   `rpc_can_on_socket_close(sockfd)`. Each releases any session
+   whose `holder_fd` matches the closing socket.
+3. **Long keep-alive reap window** — 30 s idle + 6 × 10 s probes =
+   up to 90 s before a dead connection freed its slot. Trimmed to
+   15 s + 3 × 5 s = 30 s worst-case. Fast enough to keep the pool
+   healthy across app-switch flurries, still comfortably above the
+   longest legitimately-idle stretch of a K-line job.
+
+### Changed
+
+- **`components/http_static/src/http_static.c`** —
+  `cfg.max_open_sockets = 13`, `cfg.close_fn = on_httpd_socket_close`,
+  keep-alive trimmed. PRIV_REQUIRES on `rpc_uart` + `rpc_can` so
+  the close_fn can call their release hooks.
+- **`sdkconfig.defaults`** — `CONFIG_LWIP_MAX_SOCKETS=16`.
+- **`components/rpc_uart/*`** — new public
+  `rpc_uart_on_socket_close(int sockfd)` that walks every UART
+  index and releases sessions whose `holder_fd == sockfd`.
+- **`components/rpc_can/*`** — symmetric
+  `rpc_can_on_socket_close(int sockfd)`.
+
+### Impact
+
+No client-side changes required. Behaviour improvement is:
+
+- Browser tab close / navigate-away now releases the K-line /
+  CAN wire immediately instead of after a `bus_busy` timeout on
+  the next `open`.
+- App-switching (dashx → ediabasx → nfsx → …) no longer wedges
+  the httpd after 3-4 tabs. Verified via manual multi-app cycling
+  after reflash.
+
 ## [0.2.0] — 2026-07-06
 
 Post-0.1.0 correctness pass on the firmware, plus a full bring-up +

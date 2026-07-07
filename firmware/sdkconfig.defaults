@@ -54,6 +54,15 @@ CONFIG_HTTPD_WS_SUPPORT=y
 CONFIG_HTTPD_MAX_URI_LEN=512
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
 
+# ---- LWIP sockets --------------------------------------------------------
+# Default is 10; we raised httpd `max_open_sockets` to 13 (see
+# http_static.c) so multiple concurrent apps (ediabasx / inpax / ncsx /
+# nfsx / dashx / settings-UI keep-alive) don't starve the accept queue.
+# 16 gives httpd room + a few slots for admin-UI static asset fetches
+# alongside the WS pool. Each socket costs ~2 KB of LWIP state on
+# ESP32-P4, so this is well within the 32 MB PSRAM budget.
+CONFIG_LWIP_MAX_SOCKETS=16
+
 # ---- LWIP TCP window -----------------------------------------------------
 # Defaults are 5760 B (4 × MSS), which throttles large JSON-RPC responses
 # (FA reads, full SGBD listings) hard — the server stalls waiting for ACKs

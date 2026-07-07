@@ -15,8 +15,36 @@
 #include "lwip/inet.h"
 
 #include "storage.h"
+#include "rpc_uart.h"
+#include "rpc_can.h"
 
 static const char *TAG = "http_static";
+
+/**
+ * Socket-close callback wired into `httpd_config_t.close_fn`. Fires
+ * for every socket disconnect — clean TCP shutdown, RST, or the
+ * keep-alive reaper timing out.
+ *
+ * The RPC components (`rpc_uart`, `rpc_can`) each track a
+ * per-endpoint `holder_fd`. Before this hook existed, that fd was
+ * only cleared by an explicit `uart.close` / `can.close` from the
+ * client; a browser tab that navigated away without sending it left
+ * the slot pinned to the (now-dead) fd. Subsequent opens with
+ * `exclusive: true` (nfsx directmode / bootmode do) would fail
+ * `bus_busy`, and — worse — httpd can reuse the numeric fd for a
+ * new client, silently transferring ownership. The hook walks every
+ * holder table and releases sessions matching this fd.
+ *
+ * Setting `close_fn` REPLACES the framework's default close — so we
+ * have to call `close(sockfd)` ourselves. Signature is `void` in
+ * ESP-IDF ≥ 5.
+ */
+static void on_httpd_socket_close(httpd_handle_t hd, int sockfd) {
+    (void)hd;
+    rpc_uart_on_socket_close(sockfd);
+    rpc_can_on_socket_close(sockfd);
+    close(sockfd);
+}
 
 #define APPS_ROOT      "/sdcard/apps"
 #define SYS_ROOT       "/sdcard/sys"
@@ -423,6 +451,28 @@ esp_err_t http_static_start(void) {
     cfg.max_uri_handlers = 24;
     cfg.stack_size = 8192;
 
+    // Concurrent client budget. Default is 7 — too tight for the
+    // multi-app workflow: bimmerz-box hosts ediabasx / inpax / ncsx /
+    // nfsx / dashx / tunex, and each open tab with a live WS burns
+    // one slot. Combine with:
+    //   - browser page loads spawning short-lived static-asset fetches
+    //   - the /settings admin UI's poll requests keeping a keep-alive
+    //     socket warm
+    //   - TIME_WAIT tail after socket close (LWIP_TCP_MSL = 60 s)
+    // …and the accept queue starves after 3-4 apps. Symptom seen in
+    // practice: every subsequent request (even /settings/) returns
+    // "empty reply" or connection reset because the httpd worker
+    // can't take another socket.
+    //
+    // 13 gives comfortable room. LWIP_MAX_SOCKETS is raised to 16 in
+    // sdkconfig.defaults to keep httpd from starving the LWIP pool.
+    cfg.max_open_sockets = 13;
+
+    // Per-socket cleanup — releases stale RPC session holders when a
+    // WS peer drops without sending an explicit `.close`. See the
+    // handler's doc-comment above for why this is critical.
+    cfg.close_fn = on_httpd_socket_close;
+
     // Long-running JSON-RPC jobs (NCSX C_FA_LESEN, EDIABASX flash
     // reads, anything that does many DS2 / KWP round-trips on the
     // slow K-line) hold the WS handler for tens of seconds. The
@@ -436,11 +486,16 @@ esp_err_t http_static_start(void) {
     // Keepalive — push small TCP probes during idle stretches so a
     // long-running job doesn't get killed by an intermediate NAT
     // (or the OS's own dead-connection detector) deciding the
-    // socket has gone quiet.
+    // socket has gone quiet. Was 30 s idle + 6 × 10 s probes = up
+    // to 90 s to reap a dead connection, which piled up stale
+    // holders in the accept queue when a user switched apps. 15 s
+    // idle + 3 × 5 s = 30 s worst-case reap: comfortably below the
+    // slowest cross-app switch and quick enough to recycle sockets
+    // before the pool starves.
     cfg.keep_alive_enable    = true;
-    cfg.keep_alive_idle      = 30;   // s of idle before first probe
-    cfg.keep_alive_interval  = 10;   // s between probes
-    cfg.keep_alive_count     = 6;    // dead after 6 missed probes
+    cfg.keep_alive_idle      = 15;   // s of idle before first probe
+    cfg.keep_alive_interval  = 5;    // s between probes
+    cfg.keep_alive_count     = 3;    // dead after 3 missed probes
 
     esp_err_t err = httpd_start(&s_server, &cfg);
     if (err != ESP_OK) {

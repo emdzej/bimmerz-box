@@ -155,6 +155,33 @@ See [`dashboard/README.md`](dashboard/README.md) for deploy paths
 (settings file browser, `/api/files/upload`, or the *Upload & extract
 zip* button — browser-side unzip via embedded fflate).
 
+## Installing apps on the SD card
+
+Each web app (EDIABASX, INPAX, NCSX, NFSX, TUNEX) is developed in its
+own repository and ships a pre-built **embedded bundle** as a release
+asset. To install / update an app on the dongle, grab the ZIP from
+the app repo's GitHub Releases page — no local build needed.
+
+| Slug        | Release artefact                                                                                                     | Deploys to                 |
+|-------------|----------------------------------------------------------------------------------------------------------------------|----------------------------|
+| `dashboard` | Built from this repo — see [`dashboard/README.md`](dashboard/README.md)                                              | `/sdcard/sys/dashboard/`   |
+| `ediabasx`  | [`ediabasx-web-embedded-<version>.zip`](https://github.com/emdzej/ediabasx/releases/latest)                          | `/sdcard/apps/ediabasx/`   |
+| `inpax`     | [`inpax-web-embedded-<version>.zip`](https://github.com/emdzej/inpax/releases/latest)                                | `/sdcard/apps/inpax/`      |
+| `ncsx`      | [`ncsx-web-embedded-<version>.zip`](https://github.com/emdzej/ncsx/releases/latest)                                  | `/sdcard/apps/ncsx/`       |
+| `nfsx`      | [`nfsx-web-embedded-<version>.zip`](https://github.com/emdzej/nfsx/releases/latest)                                  | `/sdcard/apps/nfsx/`       |
+| `tunex`     | [`tunex-web-embedded-<version>.zip`](https://github.com/emdzej/tunex/releases/latest)                                | `/sdcard/apps/tunex/`      |
+
+Each ZIP is the SPA built in `embedded` mode — base path rewritten to
+the app's slug, auto-connect to the same-origin `/rpc/ediabasx` wired
+in, PWA service worker stripped, `manifest.json` for the dashboard's
+tile included. Contents unzip directly to the SD path in the table
+above (settings file browser's *Upload & extract zip* button, or
+USB-MSC bulk copy — same mechanisms as data files).
+
+If you're modifying an app locally, each repo's README has the local
+`pnpm build:embedded` (or equivalent) command; the release ZIP and the
+local build output share the same layout, so both drop in the same way.
+
 ## App manifest
 
 Sibling apps under `/sdcard/apps/<slug>/` can ship an optional

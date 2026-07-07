@@ -41,3 +41,10 @@ esp_err_t rpc_uart_start(httpd_handle_t server);
 // EDXN_ERR_TRANSPORT so the VM's `job` calls fail cleanly while a
 // direct-UART app is using the wire.
 bool rpc_uart_kline_locked(void);
+
+// Called from http_static's `close_fn` for every socket close (clean,
+// RST, or keep-alive reap). Releases any UART session held by the
+// closing fd so a follow-up `uart.open` from another peer doesn't
+// see a stale holder. Safe to call before `rpc_uart_start()` — no-ops
+// if the session table isn't initialised yet.
+void rpc_uart_on_socket_close(int sockfd);

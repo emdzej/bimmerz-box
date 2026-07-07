@@ -212,6 +212,28 @@ static void revoke_previous_holder(int idx, const char *peer_ip) {
     release_session_locked(idx);
 }
 
+// Called from http_static's `close_fn` for EVERY socket close (clean
+// TCP shutdown, RST, or keep-alive reap). Before this hook existed,
+// `holder_fd` was only cleared by an explicit `uart.close` from the
+// client — a browser tab that navigated away without sending it left
+// the slot pinned to the (now-dead) fd. Subsequent `uart.open` with
+// `exclusive: true` (nfsx directmode / bootmode do) would refuse
+// with `bus_busy`, or worse: httpd could reuse the numeric fd for a
+// new client and silently transfer ownership. This function walks
+// every UART index, matches against the closing fd, and releases if
+// so. Cheap — just a semaphore-guarded pointer compare per index.
+void rpc_uart_on_socket_close(int sockfd) {
+    if (!s_lock) return;
+    if (sockfd == 0) return;   // 0 is "no holder"; never a real fd
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    for (int idx = 0; idx < RPC_UART_MAX_INDICES; ++idx) {
+        if (s_sessions[idx].holder_fd == sockfd) {
+            release_session_locked(idx);
+        }
+    }
+    xSemaphoreGive(s_lock);
+}
+
 // ---- methods --------------------------------------------------------------
 
 static const char *parity_from_params(const cJSON *p, const char *fallback) {

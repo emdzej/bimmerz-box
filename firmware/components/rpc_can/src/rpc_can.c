@@ -370,6 +370,26 @@ static void revoke_previous_holder(int idx, const char *by) {
     release_session_locked(idx);
 }
 
+// Called from http_static's `close_fn` for every socket close (clean
+// TCP shutdown, RST, or keep-alive reap). Releases any CAN session
+// held by the closing fd so a follow-up `can.open` from another peer
+// (or the same one on a new tab) doesn't see a stale holder pinned
+// to a dead — or worse, recycled — fd. Uses a non-blocking take on
+// the session lock so a shutdown storm can't wedge httpd's close
+// path; if we lose the lock race, the next `can.open` will fall
+// back to the `revoke_previous_holder` cooperative kick.
+void rpc_can_on_socket_close(int sockfd) {
+    if (!s_lock) return;
+    if (sockfd == 0) return;
+    if (xSemaphoreTake(s_lock, pdMS_TO_TICKS(100)) != pdTRUE) return;
+    for (int idx = 0; idx < RPC_CAN_MAX_INDICES; ++idx) {
+        if (s_sessions[idx].holder_fd == sockfd) {
+            release_session_locked(idx);
+        }
+    }
+    xSemaphoreGive(s_lock);
+}
+
 // ---- helpers --------------------------------------------------------------
 
 static bool bool_from(const cJSON *p, const char *key, bool fallback) {

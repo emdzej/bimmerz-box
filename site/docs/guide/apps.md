@@ -96,27 +96,43 @@ happens in your browser.
 
 Ready-to-ship dongles ship with the apps pre-loaded. If you're
 building a DIY box (or replacing / updating an app on an existing
-one), each app is built from its own repository — see that repo's
-README for the exact build steps.
+one), grab the pre-built **embedded bundle** from each app repo's
+GitHub Releases page — no cloning, no local build.
 
-| Slug           | Repo                                                                            | Deploys to                        |
-|----------------|---------------------------------------------------------------------------------|-----------------------------------|
-| `dashboard`    | [`emdzej/bimmerz-box`](https://github.com/emdzej/bimmerz-box/tree/main/dashboard) *(this repo)* | `/sdcard/sys/dashboard/`          |
-| `ediabasx`     | [`emdzej/ediabasx`](https://github.com/emdzej/ediabasx)                         | `/sdcard/apps/ediabasx/`          |
-| `inpax`        | [`emdzej/inpax`](https://github.com/emdzej/inpax)                               | `/sdcard/apps/inpax/`             |
-| `ncsx`         | [`emdzej/ncsx`](https://github.com/emdzej/ncsx)                                 | `/sdcard/apps/ncsx/`              |
-| `nfsx`         | [`emdzej/nfsx`](https://github.com/emdzej/nfsx)                                 | `/sdcard/apps/nfsx/`              |
-| `tunex`        | [`emdzej/tunex`](https://github.com/emdzej/tunex)                               | `/sdcard/apps/tunex/`             |
+Each release attaches a `<app>-web-embedded-<version>.zip` artefact
+with the SPA compiled in `embedded` mode (base path rewritten to the
+right slug, auto-connect to the same-origin `/rpc/ediabasx` wired in,
+PWA service worker stripped, `manifest.json` for the dashboard's tile
+included). Download → unzip → drop the contents into the app's SD
+path. That's the whole loop.
 
-**General shape** (verify against each repo's README before running):
+| Slug        | Release artefact                                                                                                             | Deploys to                 |
+|-------------|------------------------------------------------------------------------------------------------------------------------------|----------------------------|
+| `dashboard` | Built from [`emdzej/bimmerz-box`](https://github.com/emdzej/bimmerz-box/tree/main/dashboard) — see [dashboard/README.md](https://github.com/emdzej/bimmerz-box/blob/main/dashboard/README.md) | `/sdcard/sys/dashboard/`   |
+| `ediabasx`  | [`ediabasx-web-embedded-<version>.zip`](https://github.com/emdzej/ediabasx/releases/latest)                                  | `/sdcard/apps/ediabasx/`   |
+| `inpax`     | [`inpax-web-embedded-<version>.zip`](https://github.com/emdzej/inpax/releases/latest)                                        | `/sdcard/apps/inpax/`      |
+| `ncsx`      | [`ncsx-web-embedded-<version>.zip`](https://github.com/emdzej/ncsx/releases/latest)                                          | `/sdcard/apps/ncsx/`       |
+| `nfsx`      | [`nfsx-web-embedded-<version>.zip`](https://github.com/emdzej/nfsx/releases/latest)                                          | `/sdcard/apps/nfsx/`       |
+| `tunex`     | [`tunex-web-embedded-<version>.zip`](https://github.com/emdzej/tunex/releases/latest)                                        | `/sdcard/apps/tunex/`      |
 
-1. Clone the repo.
-2. `pnpm install && pnpm build` (or the equivalent — the individual
-   README will state exactly).
-3. Upload the `dist/` (or `build/`) contents to the corresponding
-   `/sdcard/...` path above, using either the settings file browser
-   or USB-MSC (see [Loading data files](#loading-data-files) below —
-   same mechanisms).
+**Install / update workflow:**
+
+1. Open the app repo's Releases page (links above) and download the
+   `<app>-web-embedded-<version>.zip` attached to the version you
+   want.
+2. Extract it locally — the zip's contents are the SPA root
+   (`index.html`, `assets/…`, `manifest.json`, `icon.svg`).
+3. Upload to the corresponding `/sdcard/...` path in the table above,
+   using either the settings file browser's **Upload & extract zip**
+   button or USB-MSC (see [Loading data files](#loading-data-files)
+   below).
+
+::: tip Building from source instead
+Each app repo's README has the local `pnpm build:embedded` (or
+similar) command if you're modifying an app and want to test a build
+before shipping a release. The release ZIP and the local build output
+have the same layout — same drop-in target on the SD card either way.
+:::
 
 The dashboard `HEAD`-probes each app slug at load time; missing apps
 render as dimmed "not installed" tiles instead of 404-ing when

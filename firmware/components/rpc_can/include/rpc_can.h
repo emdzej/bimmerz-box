@@ -37,3 +37,10 @@
 #include "esp_http_server.h"
 
 esp_err_t rpc_can_start(httpd_handle_t server);
+
+// Called from http_static's `close_fn` for every socket close (clean,
+// RST, or keep-alive reap). Releases any CAN session held by the
+// closing fd so a follow-up `can.open` from another peer doesn't see
+// a stale holder. Safe to call before `rpc_can_start()` — no-ops if
+// the session table isn't initialised yet.
+void rpc_can_on_socket_close(int sockfd);
