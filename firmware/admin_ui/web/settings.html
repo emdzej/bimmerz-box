@@ -284,10 +284,14 @@
       </select></div>
     <div class="row"><label for="ap_ip">AP IP / mask</label><input id="ap_ip" placeholder="172.16.7.1/24"></div>
     <div class="row"><label for="captive_dns">Captive portal</label>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-        <input id="captive_dns" type="checkbox">
-        <span style="color:var(--text-3);font-size:12px;">Hijack DNS so joining clients get the OS captive-portal pop-up. Uncheck if you reach the dongle by IP and don&#39;t want the captive sheet. Takes effect after Save &amp; Restart.</span>
-      </label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <!-- inline width:auto overrides the generic `input { width: 100% }`
+             rule at line 82 that stretches the checkbox to fill the grid
+             cell. Same for padding — the 8/10 px around text inputs
+             makes a checkbox look absurd. -->
+        <input id="captive_dns" type="checkbox" style="width:auto;padding:0;margin:0;flex:0 0 auto;">
+        <span style="color:var(--text-3);font-size:12px;line-height:1.4;">Hijack DNS so joining clients get the OS captive-portal sheet. Uncheck to reach the dongle by IP without the sheet. Takes effect after Save &amp; Restart.</span>
+      </div>
     </div>
   </section>
 
