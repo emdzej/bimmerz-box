@@ -1,6 +1,6 @@
 {
   "name": "bimmerz-box-dashboard",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "Root-namespace launcher for the bimmerz-box dongle — tiles for ediabasx / inpax / ncsx / nfsx / tunex on the same device, plus a gear shortcut to /admin/.",

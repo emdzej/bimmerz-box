@@ -10,8 +10,25 @@
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "nvs.h"
 
 static const char *TAG = "wifi_ap";
+
+/* NVS namespace + key. Shared with admin_ui's `/api/config` GET/POST
+   surface (same "bimmerz" namespace + "captive_dns" u8: 0 = off,
+   non-zero = on). Missing key → treat as enabled to preserve the
+   previous behaviour on first boot after an OTA. */
+#define NVS_NAMESPACE      "bimmerz"
+#define NVS_KEY_CAPTIVE    "captive_dns"
+
+static bool captive_dns_enabled(void) {
+    nvs_handle_t h;
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) != ESP_OK) return true;
+    uint8_t v = 1;
+    (void)nvs_get_u8(h, NVS_KEY_CAPTIVE, &v);
+    nvs_close(h);
+    return v != 0;
+}
 
 // In-car AP settings. The 172.16.7.0/24 subnet is intentionally
 // unusual to reduce the chance of collision with a phone's personal
@@ -87,11 +104,22 @@ esp_err_t wifi_ap_init(void) {
     // with the http_static host-header redirect this triggers iOS /
     // Android / Windows captive-portal detection and pops the dongle's
     // hub UI automatically when a client joins the AP.
-    dns_server_config_t dns_cfg = DNS_SERVER_CONFIG_SINGLE("*", "WIFI_AP_DEF");
-    if (start_dns_server(&dns_cfg) == NULL) {
-        ESP_LOGW(TAG, "captive DNS server failed to start");
+    //
+    // Toggleable from admin_ui / `/api/config` — some users prefer to
+    // suppress the OS captive-portal sheet (which some clients pin to
+    // a stripped-down browser view without full JS / WebSocket
+    // support). When disabled, the DNS resolver isn't started at all;
+    // clients must reach the dongle by IP (`http://172.16.7.1/`).
+    // Takes effect on the next boot (settings.html shows a note).
+    if (captive_dns_enabled()) {
+        dns_server_config_t dns_cfg = DNS_SERVER_CONFIG_SINGLE("*", "WIFI_AP_DEF");
+        if (start_dns_server(&dns_cfg) == NULL) {
+            ESP_LOGW(TAG, "captive DNS server failed to start");
+        } else {
+            ESP_LOGI(TAG, "captive DNS server up — all queries → " AP_IP);
+        }
     } else {
-        ESP_LOGI(TAG, "captive DNS server up — all queries → " AP_IP);
+        ESP_LOGI(TAG, "captive DNS disabled via NVS (`captive_dns=0`) — no DNS hijack");
     }
     return ESP_OK;
 }

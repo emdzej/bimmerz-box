@@ -283,6 +283,12 @@
         <option>9</option><option>10</option><option>11</option><option>12</option><option>13</option>
       </select></div>
     <div class="row"><label for="ap_ip">AP IP / mask</label><input id="ap_ip" placeholder="172.16.7.1/24"></div>
+    <div class="row"><label for="captive_dns">Captive portal</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input id="captive_dns" type="checkbox">
+        <span style="color:var(--text-3);font-size:12px;">Hijack DNS so joining clients get the OS captive-portal pop-up. Uncheck if you reach the dongle by IP and don&#39;t want the captive sheet. Takes effect after Save &amp; Restart.</span>
+      </label>
+    </div>
   </section>
 
   <h2>Ethernet</h2>
@@ -375,6 +381,10 @@ function loadConfigInto(cfg) {
   $("password").value  = cfg.ap_password || "";
   $("channel").value   = cfg.ap_channel || 6;
   $("ap_ip").value     = cfg.ap_ip || "172.16.7.1/24";
+  // captive_dns defaults to true for pre-existing installs (server
+  // sends `true` when the NVS key is missing) so unchecking has to
+  // be an explicit choice.
+  $("captive_dns").checked = cfg.captive_dns !== false;
   $("eth_mode").value  = cfg.eth_mode || "off";
   $("eth_ip").value    = cfg.eth_ip || "";
   $("eth_gw").value    = cfg.eth_gw || "";
@@ -389,6 +399,7 @@ function collectConfig() {
     ap_password: $("password").value,
     ap_channel:  parseInt($("channel").value, 10),
     ap_ip:       $("ap_ip").value,
+    captive_dns: $("captive_dns").checked,
     eth_mode:    $("eth_mode").value,
     eth_ip:      $("eth_ip").value,
     eth_gw:      $("eth_gw").value,

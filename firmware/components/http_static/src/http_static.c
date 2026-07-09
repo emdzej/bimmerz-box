@@ -10,6 +10,7 @@
 
 #include "esp_err.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "freertos/FreeRTOS.h"
 #include "lwip/inet.h"
@@ -51,7 +52,13 @@ static void on_httpd_socket_close(httpd_handle_t hd, int sockfd) {
 #define DATA_ROOT      "/sdcard/data"
 #define HUB_APP        "dashboard"        // lives under SYS_ROOT, served at "/"
 #define AP_IP_STRING   "172.16.7.1" // must track wifi_ap.c AP_IP
-#define FILE_CHUNK     4096
+// Read+send chunk size for the static-file handler. 32 KB gives an
+// 8× reduction in FATFS calls and TCP sends vs the previous 4 KB —
+// meaningful on the app-load path (dashx / ediabasx / … bundles are
+// 200-900 KB, so 25-30 SD reads at 32 KB each instead of 200-250 at
+// 4 KB). Buffer is heap-allocated (see file_serve()) so we don't
+// blow the httpd worker's stack.
+#define FILE_CHUNK     (32 * 1024)
 
 // Embedded welcome page (registered via EMBED_FILES in CMakeLists). Served
 // as the captive-portal landing screen for newly-joined clients.
@@ -186,15 +193,33 @@ static esp_err_t send_file(httpd_req_t *req, const char *fs_path) {
         httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
     }
 
-    char buf[FILE_CHUNK];
+    /* Heap-allocated so the 32 KB chunk doesn't have to fit in the
+       httpd worker task's stack (default ~8 KB). Prefer PSRAM: the
+       buffer is DMA-capable there per SoC caps (SOC_SDMMC_PSRAM_DMA_
+       CAPABLE=y, AXI GDMA supports PSRAM too), so SDMMC + LWIP can
+       DMA directly to/from this buffer without a bounce copy. Fall
+       back to internal RAM if the caps request fails (unlikely on a
+       32 MB PSRAM board, but keeps single-tag builds honest). */
+    char *buf = heap_caps_malloc(FILE_CHUNK, MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA);
+    if (!buf) buf = heap_caps_malloc(FILE_CHUNK, MALLOC_CAP_8BIT);
+    if (!buf) {
+        close(fd);
+        ESP_LOGE(TAG, "send_file: heap_caps_malloc(%d) failed for %s",
+                 FILE_CHUNK, fs_path);
+        return ESP_FAIL;
+    }
+
+    esp_err_t result = ESP_OK;
     ssize_t n;
-    while ((n = read(fd, buf, sizeof(buf))) > 0) {
+    while ((n = read(fd, buf, FILE_CHUNK)) > 0) {
         if (httpd_resp_send_chunk(req, buf, n) != ESP_OK) {
-            close(fd);
-            return ESP_FAIL;
+            result = ESP_FAIL;
+            break;
         }
     }
+    free(buf);
     close(fd);
+    if (result != ESP_OK) return result;
     return httpd_resp_send_chunk(req, NULL, 0);
 }
 

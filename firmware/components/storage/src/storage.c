@@ -36,6 +36,15 @@ esp_err_t storage_mount(void) {
     // mount call writes over ESP-Hosted's slot-1 state and the C6 link
     // crashes on its first RPC.
     host.slot = SDMMC_HOST_SLOT_0;
+    // Default is SDMMC_FREQ_DEFAULT = 20 MHz (probing-safe). Every
+    // modern card supports SDMMC_FREQ_HIGHSPEED = 40 MHz over the
+    // 4-bit bus, doubling read throughput on the app-serve path
+    // (dashboard + `/sdcard/apps/<slug>/` static assets). If the card
+    // negotiation fails at 40 MHz, ESP-IDF's sdmmc_host_do_slot_init
+    // falls back to a slower rate automatically — safe to try. UHS-I
+    // (SDR104 @ 100+ MHz) would give another ~2× on top but requires
+    // card-side compat and 1.8 V signaling, out of scope here.
+    host.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
 
 #if SOC_SDMMC_IO_POWER_EXTERNAL && defined(BOARD_SD_LDO_IO_CHANNEL)
     // The Waveshare ESP32-P4 Module DEV-KIT powers the SD card from the

@@ -153,6 +153,12 @@ static esp_err_t handle_api_config_get(httpd_req_t *req) {
     char ssid[33], password[64], ap_ip[24], eth_ip[24], eth_gw[20];
     char eth_mode[12], default_app[16];
     uint8_t channel = 6;
+    /* Captive-portal DNS toggle. 1 = hijack all DNS to the AP IP
+       (default; triggers OS captive-portal detection on join),
+       0 = don't start the DNS server, clients reach the dongle by
+       IP directly. Consumed by `components/wifi_ap/src/wifi_ap.c`
+       at boot. */
+    uint8_t captive_dns = 1;
 
     char default_ssid[33];
     make_default_ssid(default_ssid, sizeof(default_ssid));
@@ -166,6 +172,7 @@ static esp_err_t handle_api_config_get(httpd_req_t *req) {
         nvs_get_str_default(h, "eth_gw",      eth_gw,      sizeof(eth_gw),      "");
         nvs_get_str_default(h, "default_app", default_app, sizeof(default_app), "inpax");
         nvs_get_u8_default(h, "ap_channel", &channel, 6);
+        nvs_get_u8_default(h, "captive_dns", &captive_dns, 1);
         nvs_close(h);
     } else {
         strcpy(ssid, default_ssid);
@@ -182,6 +189,7 @@ static esp_err_t handle_api_config_get(httpd_req_t *req) {
     cJSON_AddStringToObject(r, "ap_password", password);
     cJSON_AddNumberToObject(r, "ap_channel",  channel);
     cJSON_AddStringToObject(r, "ap_ip",       ap_ip);
+    cJSON_AddBoolToObject(r,   "captive_dns", captive_dns != 0);
     cJSON_AddStringToObject(r, "eth_mode",    eth_mode);
     cJSON_AddStringToObject(r, "eth_ip",      eth_ip);
     cJSON_AddStringToObject(r, "eth_gw",      eth_gw);
@@ -234,6 +242,14 @@ static esp_err_t handle_api_config_post(httpd_req_t *req) {
     if (cJSON_IsNumber(ch)) {
         int n_ch = ch->valueint;
         if (n_ch >= 1 && n_ch <= 13) nvs_set_u8(h, "ap_channel", (uint8_t)n_ch);
+    }
+    /* Captive-portal DNS toggle — accept either a JSON bool or a
+       0/1 number so future clients that stringify it still work. */
+    const cJSON *cd = cJSON_GetObjectItemCaseSensitive(root, "captive_dns");
+    if (cJSON_IsBool(cd)) {
+        nvs_set_u8(h, "captive_dns", cJSON_IsTrue(cd) ? 1 : 0);
+    } else if (cJSON_IsNumber(cd)) {
+        nvs_set_u8(h, "captive_dns", cd->valueint != 0 ? 1 : 0);
     }
 
     esp_err_t err = nvs_commit(h);

@@ -15,6 +15,60 @@ isn't clean).
 
 _(no changes yet)_
 
+## [0.3.1] — 2026-07-09 — 2× file-serve throughput + captive-portal toggle
+
+Two independent improvements found while chasing app-load latency
+after the 0.3.0 httpd fix went in.
+
+### Changed — SD + HTTP file-serve path (measured 2-3× faster)
+
+Measured on the WiFi6 devkit against a 293 KB dashx bundle:
+
+|                           | Before          | After            | Speedup |
+|---------------------------|-----------------|------------------|---------|
+| 293 KB bundle (avg of 3)  | 523 ms @ 560 KB/s | 230 ms @ 1360 KB/s | **2.4×** |
+| 41 KB dashboard JS        | 79 ms @ 522 KB/s  | 42 ms @ 984 KB/s   | **1.9×** |
+
+Two ingredients, each about half the gain:
+
+- **SD host clock 20 → 40 MHz.** `SDMMC_HOST_DEFAULT()` initialises
+  at `SDMMC_FREQ_DEFAULT` (20 MHz, probing-safe). Every modern SD
+  card supports `SDMMC_FREQ_HIGHSPEED` (40 MHz) over the 4-bit bus;
+  ESP-IDF's `sdmmc_host_do_slot_init` falls back to a slower rate
+  automatically if negotiation fails. Change is one line in
+  `components/storage/src/storage.c`.
+- **HTTP file chunk 4 KB → 32 KB, PSRAM/DMA-capable heap buffer.**
+  Previously each `read()` → `httpd_resp_send_chunk` cycle was
+  4 KB, causing ~75 syscalls + TCP sends per 293 KB file. Now 10.
+  Buffer is `heap_caps_malloc(FILE_CHUNK, MALLOC_CAP_SPIRAM |
+  MALLOC_CAP_DMA)` — the SoC lets SDMMC and LWIP DMA straight into
+  PSRAM (SOC_SDMMC_PSRAM_DMA_CAPABLE=y, AXI GDMA supports PSRAM),
+  no bounce copies. Falls back to internal RAM if the caps request
+  fails.
+
+### Added — Captive portal DNS toggle
+
+Some clients (mobile OSes) latch a joining device to a stripped-
+down captive-portal browser view that doesn't fully support the
+apps' WebSocket flows. Users hitting that can now uncheck **Captive
+portal** in Settings and reach the dongle by IP
+(`http://172.16.7.1/`) — the DNS hijack is skipped at boot, no
+OS-side portal detection triggers.
+
+- Wire: NVS key `captive_dns` (u8, `bimmerz` namespace, `1` =
+  hijack DNS to AP IP, `0` = don't start DNS server). Default `1`
+  preserves previous behaviour for existing installs.
+- API: `/api/config` GET now returns `captive_dns` (bool); POST
+  accepts bool or 0/1 number.
+- UI: new row in the Wi-Fi AP section of `settings.html`. Takes
+  effect after Save & Restart (same as SSID / channel / etc.).
+
+### Backward compatibility
+
+No client-side changes required. `captive_dns` defaults to enabled
+so existing deployments behave exactly as before until someone
+explicitly unchecks it.
+
 ## [0.3.0] — 2026-07-07 — httpd doesn't wedge when switching between apps
 
 Field bug: after opening two or three of ediabasx / inpax / ncsx /
